@@ -1,0 +1,34 @@
+# Node modules
+node_modules
+
+# Build folders
+dist
+build
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Editor directories and files
+.vscode
+.idea
+.DS_Store
+
+# Private and Local Rule Files
+aturan/
+backend/tasks_storage.json
+Hasil_analisis.txt
+Hasil_perbaikan.txt
+lembar_konsultasi_teknis_anita_purnamasari.md
+
+# Misc
+*.tgz
+*.lock

@@ -1,0 +1,211 @@
+import { useState, useRef, useEffect } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  LayoutDashboard,
+  FileText,
+  CalendarCheck,
+  MapPin,
+  ShieldCheck,
+  ChevronDown,
+  LogOut,
+  LogIn,
+  User as UserIcon,
+  BadgeCheck,
+} from 'lucide-react';
+
+export const Navbar = () => {
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    setIsDropdownOpen(false);
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <header className="h-16 border-b border-slate-200 bg-white/95 backdrop-blur px-4 sm:px-6 flex items-center justify-between shadow-xs sticky top-0 z-50">
+      {/* Logo & Branding */}
+      <div className="flex items-center gap-6 md:gap-8">
+        <Link to="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="font-extrabold text-base text-slate-800 tracking-tight leading-none group-hover:text-blue-600 transition-colors">
+              SIM-PENUGASAN
+            </h1>
+            <p className="text-[11px] font-medium text-slate-500"></p>
+          </div>
+        </Link>
+
+        {/* Menu Navigasi Utama */}
+        <nav className="hidden md:flex items-center gap-1.5 text-sm font-medium">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all ${isActive
+                ? 'bg-blue-50 text-blue-700 font-semibold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`
+            }
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>Dashboard</span>
+          </NavLink>
+
+          <NavLink
+            to="/tugas"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all ${isActive
+                ? 'bg-blue-50 text-blue-700 font-semibold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`
+            }
+          >
+            <FileText className="w-4 h-4" />
+            <span>Penugasan</span>
+          </NavLink>
+
+          <NavLink
+            to="/absensi"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all ${isActive
+                ? 'bg-blue-50 text-blue-700 font-semibold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`
+            }
+          >
+            <CalendarCheck className="w-4 h-4" />
+            <span>Presensi</span>
+          </NavLink>
+
+          <NavLink
+            to="/pemetaan"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all ${isActive
+                ? 'bg-blue-50 text-blue-700 font-semibold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`
+            }
+          >
+            <MapPin className="w-4 h-4" />
+            <span>Pemetaan Penugasan</span>
+          </NavLink>
+        </nav>
+      </div>
+
+      {/* Profile & Auth Section */}
+      <div className="relative" ref={dropdownRef}>
+        {isAuthenticated && user ? (
+          /* Profile Dropdown Button saat terotentikasi */
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex h-14 items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-1.5 pr-3 transition-all hover:bg-slate-50 cursor-pointer group"
+          >
+            <div className="relative">
+              <img
+                src={
+                  user.fotoAvatar ||
+                  `${import.meta.env.BASE_URL}pp-navbar-2.jpg`
+                }
+                alt={user.nama}
+                className="h-10 w-10 rounded-xl object-cover border-2 border-blue-600 shadow-sm group-hover:border-blue-700"
+              />
+
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+            </div>
+
+            <div className="hidden sm:block text-left">
+              <p className="text-[13px] font-extrabold text-slate-800 leading-tight group-hover:text-blue-600 transition-colors">
+                {user.nama}
+              </p>
+              <p className="mt-0.5 text-xs font-medium text-slate-500">{user.unitKerja}</p>
+            </div>
+
+            <ChevronDown
+              className={`ml-2 h-4 w-4 text-[#8ca0bd] group-hover:text-slate-600 transition-transform ${isDropdownOpen ? 'rotate-180 text-blue-600' : ''
+                }`}
+            />
+          </button>
+        ) : (
+          /* Tombol Login saat tidak/belum terotentikasi */
+          <Link
+            to="/login"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-700 to-indigo-600 hover:from-blue-800 hover:to-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs hover:shadow-md transition-all cursor-pointer"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>Login Sistem</span>
+          </Link>
+        )}
+
+        {/* Dropdown Menu Modal */}
+        {isAuthenticated && user && isDropdownOpen && (
+          <div className="absolute right-0 mt-2 w-[300px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
+            {/* User Info Header */}
+            <div className="border-b border-slate-100 bg-slate-50/60 px-5 py-5">
+              <div className="flex items-start gap-3">
+                <img
+                  src={
+                    user.fotoAvatar ||
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'
+                  }
+                  alt={user.nama}
+                  className="h-12 w-12 rounded-xl object-cover border-2 border-blue-600 shadow-sm"
+                />
+                <div className="overflow-hidden">
+                  <h4 className="truncate text-sm font-extrabold text-slate-900">{user.nama}</h4>
+                  <p className="mt-0.5 font-mono text-xs text-[#617798]">NIP. {user.nip}</p>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#dbeafe] px-2.5 py-0.5 text-[11px] font-extrabold text-[#1d5eff]">
+                      <BadgeCheck className="h-3.5 w-3.5" />
+                      {user.role === 'SUPER_ADMIN' ? 'SUPER ADMIN' : user.role || 'PEGAWAI'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tombol Aksi */}
+            <div className="px-4 py-2.5 space-y-1">
+              <Link
+                to="/profile"
+                onClick={() => setIsDropdownOpen(false)}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+              >
+                <UserIcon className="h-4 w-4 text-[#8094b4]" />
+                <span>Profil Saya</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 cursor-pointer"
+              >
+                <LogOut className="h-4 w-4 text-red-500" />
+                <span>Keluar (Logout)</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+};
