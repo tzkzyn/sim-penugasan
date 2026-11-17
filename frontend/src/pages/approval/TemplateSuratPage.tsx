@@ -156,7 +156,7 @@ export const TemplateSuratPage = () => {
       kontenHtml: latestHtml,
       sertakanKopResmi,
       prefillData,
-      dibuatOleh: user?.nama || 'Pejabat Approval',
+      dibuatOleh: user?.nama || 'Admin TU',
       aktif: true,
     });
 

@@ -18,6 +18,7 @@ const BuatTugasPage = lazy(() => import('@/pages/admin/BuatTugasPage').then(m =>
 const EditTugasPage = lazy(() => import('@/pages/admin/EditTugasPage').then(m => ({ default: m.EditTugasPage })));
 const MonitoringTugasPage = lazy(() => import('@/pages/admin/MonitoringTugasPage').then(m => ({ default: m.MonitoringTugasPage })));
 const UploadSuratPage = lazy(() => import('@/pages/admin/UploadSuratPage').then(m => ({ default: m.UploadSuratPage })));
+const TemplateSuratPage = lazy(() => import('@/pages/admin/TemplateSuratPage').then(m => ({ default: m.TemplateSuratPage })));
 const VerifikasiAbsensiPage = lazy(() => import('@/pages/super-admin/VerifikasiAbsensiPage').then(m => ({ default: m.VerifikasiAbsensiPage })));
 
 const PageLoader = () => (
@@ -37,6 +38,7 @@ export const AdminRoutes = () => {
         {/* Pegawai / Ajuan */}
         <Route path="pegawai/detail" element={<DetailPegawaiPage />} />
         <Route path="ajuan-pegawai" element={<AjuanPegawaiPage />} />
+        <Route path="template-surat" element={<TemplateSuratPage />} />
         <Route path="rekap-penugasan" element={<RekapPenugasanPage />} />
         
         {/* Absensi */}

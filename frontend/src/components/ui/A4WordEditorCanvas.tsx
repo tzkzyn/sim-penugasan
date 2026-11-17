@@ -4,21 +4,16 @@ import type {
   TemplateSuratResmi,
 } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
-import { SignaturePad, type SignatureResult } from '@/components/ui/signature-pad';
 import { exportEditorToDocx } from '@/utils/docxExport';
 import { renderApprovalTemplateHtml } from '@/utils/docxImport';
 import {
   resolveKategoriTemplate,
 } from '@/utils/penugasanHelpers';
 import {
-  applySignatureSlotToDom,
   buildA4DocumentHtml,
-  buildSignatureSlotHtml,
   enforceSignatureIntegrityHtml,
   escapeHtml,
   extractSignaturesFromHtml,
-  formatSignatureTimestamp,
-  isValidSignatureDataUrl,
   looksLikeHtmlDocument,
   prepareDocumentSignatureSlotsHtml,
   sanitizeSafeHtml,
@@ -53,9 +48,6 @@ export interface A4WordEditorCanvasProps {
   editorRef?: React.RefObject<HTMLDivElement | null>;
   signerDefaultName?: string;
   defaultSignatureRole?: SignatureRole;
-  onSignatureChange?: (sig: SignatureResult, role: SignatureRole) => void;
-  isSignatureModalOpen?: boolean;
-  onSignatureModalOpenChange?: (open: boolean) => void;
 }
 
 export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
@@ -67,11 +59,7 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
   maxHeightClass = 'max-h-[72vh]',
   showSyncButton = true,
   editorRef: externalRef,
-  signerDefaultName,
   defaultSignatureRole,
-  onSignatureChange,
-  isSignatureModalOpen,
-  onSignatureModalOpenChange,
 }) => {
   const { user } = useAuth();
   const internalRef = useRef<HTMLDivElement>(null);
@@ -82,61 +70,19 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
     initialHtml && initialHtml.trim().length > 0 ? templateIdentityKey : null
   );
   const hasManualEdit = manualEditKey === templateIdentityKey;
-  const [internalSigOpen, setInternalSigOpen] = useState(false);
 
-  // Kunci ketat posisi tanda tangan sesuai role akun yang login:
-  // Akun APPROVAL hanya boleh mengisi TTD Kanan ('approval'),
-  // sedangkan Akun USER / ADMIN / SUPER_ADMIN saat pengajuan hanya mengisi TTD Kiri ('user').
   const allowedRole: SignatureRole =
     defaultSignatureRole ?? (user?.role?.toUpperCase() === 'APPROVAL' ? 'approval' : 'user');
 
   const initialExtractedSigs = extractSignaturesFromHtml(initialHtml);
 
-  const [userSig, setUserSig] = useState<{
-    png?: string;
-    name?: string;
-    signedAt?: string;
-  }>(() => ({
-    png: data.ttdUserPng ?? initialExtractedSigs.userPng,
-    name: data.ttdUserSignerName,
-    signedAt: data.ttdUserSignedAt ?? initialExtractedSigs.userSignedAt,
-  }));
-
-  const [approvalSig, setApprovalSig] = useState<{
-    png?: string;
-    name?: string;
-    signedAt?: string;
-  }>(() => ({
-    png: data.ttdApprovalPng ?? initialExtractedSigs.approvalPng,
-    name: data.ttdApprovalSignerName,
-    signedAt: data.ttdApprovalSignedAt ?? initialExtractedSigs.approvalSignedAt,
-  }));
-
-  const sigModalOpen = isSignatureModalOpen ?? internalSigOpen;
-  const setSigModalOpen = (nextOpen: boolean) => {
-    if (onSignatureModalOpenChange) {
-      onSignatureModalOpenChange(nextOpen);
-    } else {
-      setInternalSigOpen(nextOpen);
-    }
-  };
-
   const effectiveData: A4DocumentData = {
     ...data,
-    ttdUserPng: userSig.png ?? data.ttdUserPng,
-    ttdUserSignerName: userSig.name ?? data.ttdUserSignerName,
-    ttdUserSignedAt: userSig.signedAt ?? data.ttdUserSignedAt,
-    ttdApprovalPng: approvalSig.png ?? data.ttdApprovalPng,
-    ttdApprovalSignerName: approvalSig.name ?? data.ttdApprovalSignerName,
-    ttdApprovalSignedAt: approvalSig.signedAt ?? data.ttdApprovalSignedAt,
+    ttdUserPng: data.ttdUserPng ?? initialExtractedSigs.userPng,
+    ttdUserSignedAt: data.ttdUserSignedAt ?? initialExtractedSigs.userSignedAt,
+    ttdApprovalPng: data.ttdApprovalPng ?? initialExtractedSigs.approvalPng,
+    ttdApprovalSignedAt: data.ttdApprovalSignedAt ?? initialExtractedSigs.approvalSignedAt,
   };
-
-  const resolvedModalSignerName =
-    allowedRole === 'user'
-      ? effectiveData.pengaju?.nama || signerDefaultName || user?.nama || ''
-      : (user?.role?.toUpperCase() === 'APPROVAL' ? user?.nama : '') || 'Hj. Anita Purnamasari, S.Kom., M.T.';
-
-    const sigStorageKey = `sim_penugasan_saved_sig_${user?.id || user?.username || allowedRole}`;
 
     const activeKategori: KategoriTemplateSurat =
       variantOverride ??
@@ -255,86 +201,6 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
     }
     if (onChangeHtml) {
       onChangeHtml(freshHtml);
-    }
-  };
-
-  const handleAcceptSignature = (result: SignatureResult) => {
-    if (!isValidSignatureDataUrl(result.png)) return;
-
-    const roleToApply = allowedRole;
-    const signedAtFormatted = formatSignatureTimestamp(result.signedAt);
-    const fallbackName =
-      roleToApply === 'user'
-        ? effectiveData.pengaju?.nama || signerDefaultName || user?.nama || 'Pegawai Pengaju'
-        : 'Hj. Anita Purnamasari, S.Kom., M.T.';
-    const finalSignerName = result.name || fallbackName;
-
-    const nextEffectiveData: A4DocumentData =
-      roleToApply === 'user'
-        ? {
-            ...effectiveData,
-            ttdUserPng: result.png,
-            ttdUserSignerName: finalSignerName,
-            ttdUserSignedAt: signedAtFormatted,
-          }
-        : {
-            ...effectiveData,
-            ttdApprovalPng: result.png,
-            ttdApprovalSignerName: finalSignerName,
-            ttdApprovalSignedAt: signedAtFormatted,
-          };
-
-    if (roleToApply === 'user') {
-      setUserSig({
-        png: result.png,
-        name: finalSignerName,
-        signedAt: signedAtFormatted,
-      });
-    } else {
-      setApprovalSig({
-        png: result.png,
-        name: finalSignerName,
-        signedAt: signedAtFormatted,
-      });
-    }
-
-    if (editorRef.current) {
-      const slotHtml = buildSignatureSlotHtml(roleToApply, result.png, signedAtFormatted, finalSignerName, true);
-      applySignatureSlotToDom(editorRef.current, roleToApply, slotHtml, nextEffectiveData, finalSignerName);
-      const updatedHtml = enforceSignatureIntegrityHtml(editorRef.current.innerHTML, nextEffectiveData, roleToApply);
-      editorRef.current.innerHTML = updatedHtml;
-      if (onChangeHtml) {
-        onChangeHtml(updatedHtml);
-      }
-    }
-
-    setSigModalOpen(false);
-    if (onSignatureChange) {
-      onSignatureChange(result, roleToApply);
-    }
-  };
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement | null;
-    const userSlot = target?.closest('#a4-signature-slot-user, [data-sig-role="user"]');
-    if (userSlot) {
-      e.preventDefault();
-      if (allowedRole === 'user') {
-        setSigModalOpen(true);
-      }
-      return;
-    }
-    const approvalSlot = target?.closest('#a4-signature-slot-approval, [data-sig-role="approval"]');
-    if (approvalSlot) {
-      e.preventDefault();
-      if (allowedRole === 'approval') {
-        setSigModalOpen(true);
-      }
-      return;
-    }
-    if (target?.closest('#a4-signature-slot, [data-sig-slot="true"]')) {
-      e.preventDefault();
-      setSigModalOpen(true);
     }
   };
 
@@ -628,55 +494,10 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
           id="printable-spt-document"
           contentEditable
           suppressContentEditableWarning
-          onClick={handleCanvasClick}
           onInput={handleEditorInput}
           className="a4-paper-sheet w-full max-w-[210mm] min-h-[297mm] bg-white px-7 py-8 sm:px-11 sm:py-10 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/90 print:shadow-none print:ring-0 print:p-4"
         />
       </div>
-
-      {/* Modal Panel Tanda Tangan Digital */}
-      {sigModalOpen && (
-        <div
-          onClick={() => setSigModalOpen(false)}
-          className="no-print fixed inset-0 z-[70] grid place-items-center bg-slate-950/35 p-4 backdrop-blur-[2px] animate-in fade-in-0 duration-150 print:hidden"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[520px] space-y-2 animate-in zoom-in-95 duration-150"
-          >
-            {/* Indikator Role Aktif (Read-Only, dikunci per akun login) */}
-            <div
-              className={`rounded-xl border px-3.5 py-2 text-xs font-semibold shadow-sm ${
-                allowedRole === 'approval'
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                  : 'border-blue-200 bg-blue-50 text-blue-800'
-              }`}
-            >
-              Posisi Tanda Tangan:{' '}
-              <strong>
-                {allowedRole === 'approval'
-                  ? 'Pejabat Approval (Kolom Kanan)'
-                  : 'Pemohon / Pegawai Pelaksana (Kolom Kiri)'}
-              </strong>
-            </div>
-
-            <SignaturePad
-              key={sigStorageKey}
-              title={
-                allowedRole === 'user'
-                  ? 'TTD Digital Pengaju / Pelaksana (Kiri)'
-                  : 'TTD Digital Pejabat Approval (Kanan)'
-              }
-              signerName={resolvedModalSignerName}
-              storageKey={sigStorageKey}
-              showSignedState={false}
-              onCancel={() => setSigModalOpen(false)}
-              onAccept={handleAcceptSignature}
-              className="shadow-[0_24px_60px_-18px_rgb(0_0_0/0.35)]"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

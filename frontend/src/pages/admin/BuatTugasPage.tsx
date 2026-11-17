@@ -547,20 +547,6 @@ export const BuatTugasPage = () => {
           ttdUserSignerName={formData.ttdUserSignerName}
           ttdUserSignedAt={formData.ttdUserSignedAt}
           onChangeHtml={(html) => setFormData((prev) => ({ ...prev, dokumenDraftText: html }))}
-          onSignatureChange={(sig) =>
-            setFormData((prev) => ({
-              ...prev,
-              ttdUserPng: sig.png,
-              ttdUserSignerName: sig.name || currentAdmin.nama,
-              ttdUserSignedAt: sig.signedAt.toLocaleString('id-ID', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              }),
-            }))
-          }
           onSwitchToEditor={() => setFormData({ ...formData, docMode: 'editor' })}
         />
       </div>

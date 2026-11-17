@@ -218,7 +218,7 @@ export function ApprovalTemplateListSection({
 
       {templates.length === 0 ? (
         <p className="text-xs text-slate-400 py-6 text-center">
-          Belum ada template yang dikirim oleh Approval. Unggah file <code>.docx</code> atau edit kertas A4 di atas lalu klik <strong>Kirim Template ke User</strong>.
+          Belum ada template yang dikirim oleh Admin. Unggah file <code>.docx</code> atau edit kertas A4 di atas lalu klik <strong>Kirim Template ke User</strong>.
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

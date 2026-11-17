@@ -36,7 +36,6 @@ interface UserDraftAjuanPreviewProps {
   dokumenDraftText: string;
   selectedApprovalTemplate?: TemplateSuratResmi | null;
   onChangeHtml: (html: string) => void;
-  onSignatureChange: (sig: { png: string; name?: string; signedAt: Date }) => void;
   onSwitchToEditor: () => void;
 }
 
@@ -69,7 +68,6 @@ export function UserDraftAjuanPreview({
   dokumenDraftText,
   selectedApprovalTemplate,
   onChangeHtml,
-  onSignatureChange,
   onSwitchToEditor,
 }: UserDraftAjuanPreviewProps) {
   return (
@@ -108,7 +106,6 @@ export function UserDraftAjuanPreview({
           maxHeightClass="max-h-[62vh] lg:max-h-[calc(94vh-285px)]"
           showSyncButton={true}
           onChangeHtml={onChangeHtml}
-          onSignatureChange={onSignatureChange}
         />
       </div>
       {docMode !== 'editor' && (

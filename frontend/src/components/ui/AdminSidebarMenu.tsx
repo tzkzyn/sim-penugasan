@@ -88,7 +88,6 @@ const getSidebarMenuByRole = (role: string, prefix: string): SidebarMenuItemConf
       { to: `${prefix}/approval-tugas`, label: 'Approval Tugas', icon: CheckSquare },
       { to: `${prefix}/approval-cuti`, label: 'Approval Izin & Cuti', icon: CalendarCheck },
       { to: `${prefix}/surat-tugas`, label: 'Surat Tugas', icon: FileText },
-      { to: `${prefix}/template-surat`, label: 'Template Surat', icon: ClipboardList },
       { to: `${prefix}/riwayat-approval`, label: 'Riwayat Approval', icon: History },
     ];
   }
@@ -127,6 +126,7 @@ const getSidebarMenuByRole = (role: string, prefix: string): SidebarMenuItemConf
       icon: ShieldCheck,
       items: [
         { to: `${prefix}/ajuan-pegawai`, label: 'Ajuan Pegawai', icon: FileText },
+        { to: `${prefix}/template-surat`, label: 'Template Surat', icon: ClipboardList },
         { to: `${prefix}/rekap-penugasan`, label: 'Rekap Penugasan', icon: ChartNoAxesCombined },
       ],
     },

@@ -975,20 +975,6 @@ export const UserDraftAjuanModal = ({
               dokumenDraftText={formData.dokumenDraftText}
               selectedApprovalTemplate={selectedApprovalTemplate}
               onChangeHtml={(html) => setFormData((prev) => ({ ...prev, dokumenDraftText: html }))}
-              onSignatureChange={(sig) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  ttdUserPng: sig.png,
-                  ttdUserSignerName: sig.name || currentPegawai.nama,
-                  ttdUserSignedAt: sig.signedAt.toLocaleString('id-ID', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }),
-                }))
-              }
               onSwitchToEditor={() => setFormData({ ...formData, docMode: 'editor' })}
             />
           </div>

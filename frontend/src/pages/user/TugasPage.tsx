@@ -416,20 +416,20 @@ export const TugasPage = () => {
 
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="px-5 py-4 align-middle min-w-[290px] max-w-md">
+                          <td className="px-5 py-4 align-top max-w-sm">
                             <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                              <span className="font-mono text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/80 whitespace-nowrap">
+                              <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/80">
                                 {item.nomorSurat}
                               </span>
-                              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200/80 whitespace-nowrap">
+                              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200/80">
                                 {getKategoriLabel(kategori)}
                               </span>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${unitColor.bg} ${unitColor.text}`}>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${unitColor.bg} ${unitColor.text}`}>
                                 {item.unitKerja}
                               </span>
                             </div>
-                            <p className="text-[13px] font-bold text-slate-900 line-clamp-2 leading-snug">{item.perihal}</p>
-                            <p className="mt-1 text-[11px] text-slate-500">
+                            <p className="font-semibold text-slate-800 line-clamp-2 leading-snug">{item.perihal}</p>
+                            <p className="mt-1 text-xs text-slate-500">
                               Pengaju: <span className="font-medium text-slate-700">{item.pengaju.nama}</span>
                               {item.pengaju.nip && item.pengaju.nip !== '-' ? ` • ${item.pengaju.nip}` : ''}
                             </p>
@@ -444,7 +444,7 @@ export const TugasPage = () => {
                               </p>
                             )}
                           </td>
-                          <td className="px-5 py-4 align-middle whitespace-nowrap">
+                          <td className="px-5 py-4 align-top whitespace-nowrap">
                             {item.pegawaiDitugaskan.length === 1 ? (
                               <p className="text-xs font-semibold text-slate-800">
                                 {item.pegawaiDitugaskan[0].nama}
@@ -461,27 +461,22 @@ export const TugasPage = () => {
                               </button>
                             )}
                           </td>
-                          <td className="px-5 py-4 align-middle min-w-[230px] max-w-[260px]">
+                          <td className="px-5 py-4 align-top min-w-[210px]">
                             <p className="text-xs font-semibold text-slate-800 whitespace-nowrap">
                               {formatRentangTanggal(item.tanggalMulai, item.tanggalSelesai)}
                             </p>
                             <p className="text-[11px] font-medium text-blue-700 mt-0.5 whitespace-nowrap">
                               {formatJamRange(item.jamMulai, item.jamSelesai)}
                             </p>
-                            <div
-                              className="flex items-start gap-1.5 text-slate-500 text-[11px] mt-1.5"
-                              title={[item.lokasiSpesifik, formatLokasiKhusus(item.lokasiPenugasan)].filter(Boolean).join(' • ')}
-                            >
+                            <div className="flex items-start gap-1 text-slate-500 text-xs mt-1">
                               <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
-                              <div className="min-w-0 leading-tight">
-                                {item.lokasiSpesifik && (
-                                  <p className="font-medium text-slate-700 truncate">{item.lokasiSpesifik}</p>
-                                )}
-                                <p className="truncate">{formatLokasiKhusus(item.lokasiPenugasan)}</p>
-                              </div>
+                              <span className="line-clamp-2">
+                                {item.lokasiSpesifik ? `${item.lokasiSpesifik} • ` : ''}
+                                {formatLokasiKhusus(item.lokasiPenugasan)}
+                              </span>
                             </div>
                           </td>
-                          <td className="px-5 py-4 align-middle whitespace-nowrap">
+                          <td className="px-5 py-4 align-top whitespace-nowrap">
                             <div className="flex flex-col items-start gap-1.5">
                               <AjuanStatusBadge status={item.status} />
                               {itemConflicts.length > 0 && (
@@ -492,7 +487,7 @@ export const TugasPage = () => {
                             </div>
                           </td>
                           <td
-                            className="relative px-5 py-4 align-middle text-right whitespace-nowrap"
+                            className="relative px-5 py-4 align-top text-right whitespace-nowrap"
                             onMouseLeave={() => setOpenActionId((current) => (current === item.id ? null : current))}
                           >
                             <button

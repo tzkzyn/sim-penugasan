@@ -5,7 +5,6 @@ import type {
 } from '@/types';
 import { usePenugasan } from '@/context/PenugasanContext';
 import { useAuth } from '@/hooks/useAuth';
-import type { SignatureResult } from '@/components/ui/signature-pad';
 import { A4WordEditorCanvas } from '@/components/ui/A4WordEditorCanvas';
 import {
   downloadFileUrl,
@@ -15,8 +14,6 @@ import {
 import {
   enforceSignatureIntegrityHtml,
   extractSignaturesFromHtml,
-  formatSignatureTimestamp,
-  isValidSignatureDataUrl,
   type A4DocumentData,
   type SignatureRole,
 } from '@/utils/suratHtmlHelpers';
@@ -26,7 +23,6 @@ import {
   Save,
   CheckCircle2,
   FileText,
-  PenLine,
   Upload,
   Send,
 } from 'lucide-react';
@@ -59,7 +55,6 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
   const [draftHtml, setDraftHtml] = useState(() => currentSurat.dokumenDraftText || '');
   const [editedNomorSurat, setEditedNomorSurat] = useState(() => currentSurat.nomorSurat);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'warning'; text: string } | null>(null);
-  const [isSignatureOpen, setIsSignatureOpen] = useState(false);
 
   const modalAllowedRole: SignatureRole =
     showApprovalActions || user?.role?.toUpperCase() === 'APPROVAL' ? 'approval' : 'user';
@@ -180,62 +175,8 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
     });
   };
 
-  const handleSignatureSaved = async (sig: SignatureResult, role: SignatureRole) => {
-    const cleanHtml = getLatestHtml();
-    const signedAtStr = formatSignatureTimestamp(sig.signedAt);
-    const signerNameValue =
-      sig.name ||
-      (role === 'user'
-        ? currentSurat.pengaju?.nama || user?.nama || 'Pegawai Pengaju'
-        : user?.nama || 'Hj. Anita Purnamasari, S.Kom., M.T.');
-
-    if (role === 'user') {
-      await updateTask(currentSurat.id, {
-        dokumenDraftText: cleanHtml,
-        ttdUserPng: sig.png,
-        ttdUserSignerName: signerNameValue,
-        ttdUserSignedAt: signedAtStr,
-        ttdDigitalPng: sig.png,
-        ttdSignerName: signerNameValue,
-        ttdSignedAt: signedAtStr,
-      });
-      setFeedback({
-        type: 'success',
-        text: 'Tanda tangan Pengaju (Kolom Kiri) berhasil dibubuhkan & disimpan ke sistem!',
-      });
-    } else {
-      await updateTask(currentSurat.id, {
-        dokumenDraftText: cleanHtml,
-        ttdApprovalPng: sig.png,
-        ttdApprovalSignerName: signerNameValue,
-        ttdApprovalSignedAt: signedAtStr,
-        ttdDigitalPng: sig.png,
-        ttdSignerName: signerNameValue,
-        ttdSignedAt: signedAtStr,
-      });
-      setFeedback({
-        type: 'success',
-        text: 'Tanda tangan Pejabat Approval (Kolom Kanan) berhasil dibubuhkan & disimpan ke sistem!',
-      });
-    }
-  };
-
   const handleSaveAndApprove = async () => {
     const cleanHtml = getLatestHtml();
-    const domSigs = extractSignaturesFromHtml(cleanHtml);
-    const hasApprovalSig = Boolean(
-      isValidSignatureDataUrl(authoritativeData.ttdApprovalPng) ||
-      isValidSignatureDataUrl(domSigs.approvalPng)
-    );
-
-    if (!hasApprovalSig) {
-      setFeedback({
-        type: 'warning',
-        text: 'Silakan bubuhkan Tanda Tangan Pejabat Approval (Kolom Kanan) terlebih dahulu sebelum menerbitkan SPT!',
-      });
-      setIsSignatureOpen(true);
-      return;
-    }
 
     const updatedWorkflow: WorkflowStep[] = (currentSurat.workflow || []).map((w) => ({
       ...w,
@@ -245,7 +186,6 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
 
     await updateTask(currentSurat.id, {
       dokumenDraftText: cleanHtml,
-      ttdApprovalPng: authoritativeData.ttdApprovalPng ?? domSigs.approvalPng,
       status: 'SURAT_TERBIT',
       workflow: updatedWorkflow,
     });
@@ -276,15 +216,6 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsSignatureOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
-            >
-              <PenLine className="w-3.5 h-3.5" />
-              {modalAllowedRole === 'approval' ? 'Bubuhkan TTD Approval' : 'Bubuhkan TTD Pengaju'}
-            </button>
-
             <button
               type="button"
               onClick={handleSaveChanges}
@@ -415,9 +346,6 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
           editorRef={canvasEditorRef}
           signerDefaultName={currentSurat.pengaju?.nama || user?.nama}
           defaultSignatureRole={modalAllowedRole}
-          onSignatureChange={handleSignatureSaved}
-          isSignatureModalOpen={isSignatureOpen}
-          onSignatureModalOpenChange={setIsSignatureOpen}
         />
       </div>
     </div>

@@ -24,6 +24,8 @@ export const ApprovalTugasPage = () => {
   const [activeTab, setActiveTab] = useState<'PENDING' | 'RIWAYAT'>('PENDING');
   const [selectedUnit, setSelectedUnit] = useState<string>('ALL');
   const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
+  const [rejectModalTask, setRejectModalTask] = useState<AjuanSuratTugas | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [selectedSuratForA4, setSelectedSuratForA4] = useState<AjuanSuratTugas | null>(null);
   const [actionMsg, setActionMsg] = useState<string>('');
 
@@ -463,11 +465,14 @@ export const ApprovalTugasPage = () => {
                                     <CheckCircle2 className="w-4 h-4" />
                                   </button>
                                   <button 
-                                    onClick={() =>
-                                      tugasConflicts.length > 0
-                                        ? handleRejectBentrok(tugas, tugasConflicts)
-                                        : handleReject(tugas.id)
-                                    }
+                                    onClick={() => {
+                                      if (tugasConflicts.length > 0) {
+                                        handleRejectBentrok(tugas, tugasConflicts);
+                                      } else {
+                                        setRejectReason('');
+                                        setRejectModalTask(tugas);
+                                      }
+                                    }}
                                     className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md transition-colors font-medium cursor-pointer"
                                     title="Tolak"
                                   >
@@ -516,12 +521,60 @@ export const ApprovalTugasPage = () => {
         onOpenA4={(task) => setSelectedSuratForA4(task)}
         onRejectBentrok={handleRejectBentrok}
         onApproveDirect={(id) => handleApprove(id)}
-        onUploadFixAndApprove={async (id, updates, fileName) => {
-          await updateTask(id, updates);
-          setActionMsg(`File surat perbaikan "${fileName}" berhasil disimpan & disetujui.`);
-        }}
-        onActionMessage={setActionMsg}
       />
+
+      {/* Modal Tolak dengan Catatan Pimpinan */}
+      {rejectModalTask && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
+                <XCircle className="w-5 h-5 text-rose-600" />
+                Tolak Pengajuan Surat Tugas
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRejectModalTask(null)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-600">
+              Surat <span className="font-mono font-bold text-slate-800">{rejectModalTask.nomorSurat}</span> akan dikembalikan dengan status <strong>Ditolak</strong>. Berikan catatan perbaikan agar pengaju / Admin dapat menindaklanjuti:
+            </p>
+            <textarea
+              rows={3}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Contoh: Jadwal atau lokasi penugasan perlu disesuaikan..."
+              className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-200"
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setRejectModalTask(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const finalReason =
+                    rejectReason.trim() || 'Ditolak oleh Pimpinan, mohon periksa kembali ajuan surat.';
+                  await handleReject(rejectModalTask.id, finalReason);
+                  setActionMsg(`Surat ${rejectModalTask.nomorSurat} ditolak dengan catatan.`);
+                  setRejectModalTask(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
+              >
+                Konfirmasi Tolak
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Editor & Cetak Kertas A4 (Approval Mode: Edit, Simpan, ACC & Print) */}
       <CetakSuratTugasModal

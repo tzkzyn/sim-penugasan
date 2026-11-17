@@ -170,7 +170,6 @@ interface AdminBuatTugasPreviewColumnProps {
   ttdUserSignerName: string;
   ttdUserSignedAt: string;
   onChangeHtml: (html: string) => void;
-  onSignatureChange: (sig: { png: string; name?: string; signedAt: Date }) => void;
   onSwitchToEditor: () => void;
 }
 
@@ -195,7 +194,6 @@ export function AdminBuatTugasPreviewColumn({
   ttdUserSignerName,
   ttdUserSignedAt,
   onChangeHtml,
-  onSignatureChange,
   onSwitchToEditor,
 }: AdminBuatTugasPreviewColumnProps) {
   return (
@@ -231,7 +229,6 @@ export function AdminBuatTugasPreviewColumn({
           maxHeightClass="max-h-[75vh]"
           showSyncButton={true}
           onChangeHtml={onChangeHtml}
-          onSignatureChange={onSignatureChange}
         />
       </div>
       {docMode !== 'editor' && (
