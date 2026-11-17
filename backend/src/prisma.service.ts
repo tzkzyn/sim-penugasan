@@ -44,6 +44,25 @@ export interface SuratTugasEntity {
   [key: string]: unknown;
 }
 
+export interface TemplateSuratEntity {
+  id: string;
+  namaTemplate: string;
+  deskripsi?: string;
+  kategoriTemplate: string;
+  fileNamaAsli?: string;
+  fileDocxDataUrl?: string;
+  hasFileDocx?: boolean;
+  kontenHtml: string;
+  sertakanKopResmi: boolean;
+  prefillData?: Record<string, unknown>;
+  dibuatOleh: string;
+  diperbaruiPada: string;
+  aktif: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
 const VALID_UNITS = new Set<UnitKerjaBackend>([
   'RBI',
   'Fastingkom',
@@ -276,9 +295,11 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private initPromise: Promise<void> | null = null;
   private inMemoryTasks: SuratTugasEntity[] = [];
   private inMemoryPegawai: PegawaiEntity[] = [...DEFAULT_PEGAWAI_SEED];
+  private inMemoryTemplates: TemplateSuratEntity[] = [];
   private readonly backendRoot: string;
   private readonly tasksStorageFile: string;
   private readonly pegawaiStorageFile: string;
+  private readonly templatesStorageFile: string;
 
   constructor() {
     this.backendRoot = resolveBackendRoot();
@@ -288,8 +309,13 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
       this.backendRoot,
       'pegawai_storage.json',
     );
+    this.templatesStorageFile = path.join(
+      this.backendRoot,
+      'templates_storage.json',
+    );
     this.loadTaskStorage();
     this.loadPegawaiStorage();
+    this.loadTemplateStorage();
   }
 
   private loadTaskStorage() {
@@ -343,6 +369,32 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
       );
     } catch (e) {
       console.error('[Storage] Gagal menyimpan pegawai_storage.json:', e);
+    }
+  }
+
+  private loadTemplateStorage() {
+    try {
+      if (fs.existsSync(this.templatesStorageFile)) {
+        const data = fs.readFileSync(this.templatesStorageFile, 'utf-8');
+        const parsed: unknown = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          this.inMemoryTemplates = parsed as TemplateSuratEntity[];
+        }
+      }
+    } catch {
+      this.inMemoryTemplates = [];
+    }
+  }
+
+  private saveTemplateStorage() {
+    try {
+      fs.writeFileSync(
+        this.templatesStorageFile,
+        JSON.stringify(this.inMemoryTemplates, null, 2),
+        'utf-8',
+      );
+    } catch (e) {
+      console.error('[Storage] Gagal menyimpan templates_storage.json:', e);
     }
   }
 
@@ -430,6 +482,18 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
           tanggal_selesai VARCHAR(20) NOT NULL,
           lokasi_penugasan VARCHAR(255) NOT NULL,
           status VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+          payload JSONB NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS template_surat (
+          id VARCHAR(64) PRIMARY KEY,
+          nama_template VARCHAR(255) NOT NULL,
+          kategori_template VARCHAR(50) NOT NULL DEFAULT 'INDIVIDU',
+          aktif BOOLEAN NOT NULL DEFAULT TRUE,
           payload JSONB NOT NULL,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -1020,6 +1084,176 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
         if (index !== -1) {
           const removed = this.inMemoryTasks.splice(index, 1)[0];
           this.saveTaskStorage();
+          return removed;
+        }
+        return null;
+      },
+    };
+  }
+
+  private parseTemplatePayloadRow(payload: unknown): TemplateSuratEntity {
+    if (typeof payload === 'string') {
+      return JSON.parse(payload) as TemplateSuratEntity;
+    }
+    return payload as TemplateSuratEntity;
+  }
+
+  get templateSurat() {
+    return {
+      findMany: async (): Promise<TemplateSuratEntity[]> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            SELECT payload FROM template_surat ORDER BY updated_at DESC, created_at DESC
+          `;
+          return rows.map((row) => this.parseTemplatePayloadRow(row.payload));
+        }
+        this.loadTemplateStorage();
+        return [...this.inMemoryTemplates];
+      },
+
+      findUnique: async (args: {
+        where: { id: string };
+      }): Promise<TemplateSuratEntity | null> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            SELECT payload FROM template_surat WHERE id = ${args.where.id} LIMIT 1
+          `;
+          return rows[0] ? this.parseTemplatePayloadRow(rows[0].payload) : null;
+        }
+        this.loadTemplateStorage();
+        return (
+          this.inMemoryTemplates.find((tpl) => tpl.id === args.where.id) || null
+        );
+      },
+
+      create: async (args: {
+        data: Record<string, unknown>;
+      }): Promise<TemplateSuratEntity> => {
+        await this.ensureInitialized();
+        const nowIso = new Date().toISOString();
+        const newTemplate: TemplateSuratEntity = {
+          ...(args.data as Partial<TemplateSuratEntity>),
+          id:
+            typeof args.data.id === 'string' && args.data.id.trim()
+              ? args.data.id.trim()
+              : `TPL-${Date.now()}`,
+          namaTemplate: asText(args.data.namaTemplate, 'Template Surat'),
+          kategoriTemplate: asText(args.data.kategoriTemplate, 'INDIVIDU'),
+          kontenHtml: asText(args.data.kontenHtml),
+          sertakanKopResmi: Boolean(args.data.sertakanKopResmi),
+          dibuatOleh: asText(args.data.dibuatOleh, 'Pejabat Approval'),
+          diperbaruiPada: asText(args.data.diperbaruiPada, nowIso),
+          aktif: args.data.aktif !== undefined ? Boolean(args.data.aktif) : true,
+          createdAt:
+            typeof args.data.createdAt === 'string'
+              ? args.data.createdAt
+              : nowIso,
+          updatedAt: nowIso,
+        };
+
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            INSERT INTO template_surat (
+              id, nama_template, kategori_template, aktif, payload
+            ) VALUES (
+              ${newTemplate.id},
+              ${newTemplate.namaTemplate},
+              ${newTemplate.kategoriTemplate},
+              ${newTemplate.aktif},
+              ${this.pgSql.json(newTemplate as postgres.JSONValue)}
+            )
+            ON CONFLICT (id) DO UPDATE SET
+              nama_template = EXCLUDED.nama_template,
+              kategori_template = EXCLUDED.kategori_template,
+              aktif = EXCLUDED.aktif,
+              payload = EXCLUDED.payload,
+              updated_at = NOW()
+            RETURNING payload
+          `;
+          return this.parseTemplatePayloadRow(rows[0].payload);
+        }
+
+        this.loadTemplateStorage();
+        const existingIdx = this.inMemoryTemplates.findIndex(
+          (tpl) => tpl.id === newTemplate.id,
+        );
+        if (existingIdx !== -1) {
+          this.inMemoryTemplates[existingIdx] = newTemplate;
+        } else {
+          this.inMemoryTemplates.unshift(newTemplate);
+        }
+        this.saveTemplateStorage();
+        return newTemplate;
+      },
+
+      update: async (args: {
+        where: { id: string };
+        data: Record<string, unknown>;
+      }): Promise<TemplateSuratEntity | null> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const existing = await this.templateSurat.findUnique({
+            where: { id: args.where.id },
+          });
+          if (!existing) return null;
+
+          const updatedTemplate: TemplateSuratEntity = {
+            ...existing,
+            ...(args.data as Partial<TemplateSuratEntity>),
+            id: existing.id,
+            updatedAt: new Date().toISOString(),
+          };
+
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            UPDATE template_surat
+            SET
+              nama_template = ${String(updatedTemplate.namaTemplate || 'Template Surat')},
+              kategori_template = ${String(updatedTemplate.kategoriTemplate || 'INDIVIDU')},
+              aktif = ${Boolean(updatedTemplate.aktif)},
+              payload = ${this.pgSql.json(updatedTemplate as postgres.JSONValue)},
+              updated_at = NOW()
+            WHERE id = ${args.where.id}
+            RETURNING payload
+          `;
+          return rows[0] ? this.parseTemplatePayloadRow(rows[0].payload) : null;
+        }
+
+        this.loadTemplateStorage();
+        const index = this.inMemoryTemplates.findIndex(
+          (tpl) => tpl.id === args.where.id,
+        );
+        if (index !== -1) {
+          this.inMemoryTemplates[index] = {
+            ...this.inMemoryTemplates[index],
+            ...(args.data as Partial<TemplateSuratEntity>),
+            updatedAt: new Date().toISOString(),
+          };
+          this.saveTemplateStorage();
+          return this.inMemoryTemplates[index];
+        }
+        return null;
+      },
+
+      delete: async (args: {
+        where: { id: string };
+      }): Promise<TemplateSuratEntity | null> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            DELETE FROM template_surat WHERE id = ${args.where.id} RETURNING payload
+          `;
+          return rows[0] ? this.parseTemplatePayloadRow(rows[0].payload) : null;
+        }
+
+        this.loadTemplateStorage();
+        const index = this.inMemoryTemplates.findIndex(
+          (tpl) => tpl.id === args.where.id,
+        );
+        if (index !== -1) {
+          const removed = this.inMemoryTemplates.splice(index, 1)[0];
+          this.saveTemplateStorage();
           return removed;
         }
         return null;

@@ -3,6 +3,7 @@ import {
   type PegawaiEntity,
   PrismaService,
   type SuratTugasEntity,
+  type TemplateSuratEntity,
 } from '../../prisma.service';
 
 @Injectable()
@@ -73,6 +74,50 @@ export class TugasService {
 
   async deletePegawai(id: string): Promise<PegawaiEntity> {
     return this.prisma.pegawai.delete({
+      where: { id },
+    });
+  }
+
+  // ------------------------------------------------------------
+  // CRUD Template Surat Resmi (PostgreSQL)
+  // ------------------------------------------------------------
+
+  async findAllTemplates(): Promise<TemplateSuratEntity[]> {
+    const list = await this.prisma.templateSurat.findMany();
+    return list.map((item) => {
+      const hasFileDocx = Boolean(item.fileDocxDataUrl || item.hasFileDocx);
+      const copy: TemplateSuratEntity = { ...item, hasFileDocx };
+      delete copy.fileDocxDataUrl;
+      return copy;
+    });
+  }
+
+  async findOneTemplate(id: string): Promise<TemplateSuratEntity | null> {
+    return this.prisma.templateSurat.findUnique({
+      where: { id },
+    });
+  }
+
+  async createTemplate(
+    data: Record<string, unknown>,
+  ): Promise<TemplateSuratEntity> {
+    return this.prisma.templateSurat.create({
+      data,
+    });
+  }
+
+  async updateTemplate(
+    id: string,
+    data: Record<string, unknown>,
+  ): Promise<TemplateSuratEntity | null> {
+    return this.prisma.templateSurat.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async deleteTemplate(id: string): Promise<TemplateSuratEntity | null> {
+    return this.prisma.templateSurat.delete({
       where: { id },
     });
   }

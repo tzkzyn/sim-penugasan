@@ -26,6 +26,7 @@ lerna-debug.log*
 aturan/
 backend/tasks_storage.json
 backend/pegawai_storage.json
+backend/templates_storage.json
 Hasil_analisis.txt
 Hasil_perbaikan.txt
 lembar_konsultasi_teknis_anita_purnamasari.md

@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePenugasan } from '@/context/PenugasanContext';
 import type { KategoriTemplateSurat, TemplatePrefillData, TemplateSuratResmi } from '@/types';
-import { parseDocxFileToTemplate } from '@/utils/docxImport';
+import { DEFAULT_STARTER_TEMPLATE_HTML, parseDocxFileToTemplate } from '@/utils/docxImport';
+import { MAX_UPLOAD_FILE_BYTES, readFileAsDataUrl } from '@/utils/penugasanHelpers';
 import {
   FileText,
   UploadCloud,
@@ -21,36 +22,9 @@ import {
   Power,
   Plus,
   AlertTriangle,
+  ChevronDown,
+  Download,
 } from 'lucide-react';
-
-const DEFAULT_STARTER_TEMPLATE_HTML = `<div style="text-align:center;margin:18px 0 22px 0;">
-  <div style="font-size:14pt;font-weight:700;letter-spacing:1px;text-transform:uppercase;">SURAT TUGAS</div>
-  <div style="font-size:11pt;margin-top:4px;">Nomor {{NOMOR_SURAT}}</div>
-</div>
-<div style="text-align:justify;line-height:1.65;margin-bottom:10px;">
-  Kepala Balai Besar Pengembangan Penjaminan Mutu Pendidikan Vokasi Bidang Mesin dan Teknik Industri (BBPPMPV BMTI) menugasi
-</div>
-<div>{{TABEL_PEGAWAI}}</div>
-<div style="text-align:justify;line-height:1.65;margin-bottom:12px;">
-  sebagai {{PERIHAL}}. Kegiatan akan diselenggarakan pada tanggal {{TANGGAL}} di {{LOKASI}}. {{DASAR_SURAT}}
-</div>
-<div style="text-align:justify;line-height:1.65;margin-bottom:14px;">
-  {{BIAYA}}
-</div>
-<div style="text-align:justify;line-height:1.65;margin-bottom:28px;">
-  Surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab dan yang bersangkutan diharapkan membuat laporan.
-</div>
-<table class="spt-layout-table" width="100%" style="width:100%;border-collapse:collapse;margin-top:24px;">
-  <tr>
-    <td width="58%" style="width:58%;">&nbsp;</td>
-    <td width="42%" style="width:42%;text-align:left;line-height:1.5;">
-      <div>{{TANGGAL}}</div>
-      <div style="margin-top:2px;">Kepala,</div>
-      <div style="height:55px;">&nbsp;</div>
-      <div style="font-weight:700;">{{NAMA_KEPALA}}</div>
-    </td>
-  </tr>
-</table>`;
 
 const VARIABLE_TOKENS = [
   { token: '{{NOMOR_SURAT}}', label: 'Nomor Surat' },
@@ -69,7 +43,7 @@ const VARIABLE_TOKENS = [
 
 export const TemplateSuratPage = () => {
   const { user } = useAuth();
-  const { templates, saveTemplate, deleteTemplate, toggleTemplateActive } = usePenugasan();
+  const { templates, saveTemplate, deleteTemplate, toggleTemplateActive, downloadTemplateDocx } = usePenugasan();
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,11 +52,26 @@ export const TemplateSuratPage = () => {
   const [deskripsi, setDeskripsi] = useState('');
   const [kategoriTemplate, setKategoriTemplate] = useState<KategoriTemplateSurat>('INDIVIDU');
   const [fileNamaAsli, setFileNamaAsli] = useState('');
-  const [sertakanKopResmi, setSertakanKopResmi] = useState(true);
-  const [kontenHtml, setKontenHtml] = useState(DEFAULT_STARTER_TEMPLATE_HTML);
+  const [fileDocxDataUrl, setFileDocxDataUrl] = useState('');
+  const [sertakanKopResmi, setSertakanKopResmi] = useState(false);
+  const [kontenHtml, setKontenHtml] = useState('');
   const [prefillData, setPrefillData] = useState<TemplatePrefillData>({});
   const [statusFeedback, setStatusFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isParsingDocx, setIsParsingDocx] = useState(false);
+  const [isVarMenuOpen, setIsVarMenuOpen] = useState(false);
+  const [isPrefillOpen, setIsPrefillOpen] = useState(false);
+  const [kopImgError, setKopImgError] = useState(false);
+  const [footerImgError, setFooterImgError] = useState(false);
+
+  const normalizedBaseUrl = import.meta.env.BASE_URL.endsWith('/')
+    ? import.meta.env.BASE_URL
+    : `${import.meta.env.BASE_URL}/`;
+
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== kontenHtml && !kontenHtml) {
+      editorRef.current.innerHTML = '';
+    }
+  }, [kontenHtml]);
 
   const syncEditorContent = (nextHtml: string) => {
     setKontenHtml(nextHtml);
@@ -97,10 +86,12 @@ export const TemplateSuratPage = () => {
     setDeskripsi('');
     setKategoriTemplate('INDIVIDU');
     setFileNamaAsli('');
-    setSertakanKopResmi(true);
+    setFileDocxDataUrl('');
+    setSertakanKopResmi(false);
     setPrefillData({});
+    setIsPrefillOpen(false);
     setStatusFeedback(null);
-    syncEditorContent(DEFAULT_STARTER_TEMPLATE_HTML);
+    syncEditorContent('');
   };
 
   const handleUploadDocx = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,19 +99,35 @@ export const TemplateSuratPage = () => {
     e.target.value = '';
     if (!file) return;
 
+    if (file.size > MAX_UPLOAD_FILE_BYTES) {
+      setStatusFeedback({
+        type: 'error',
+        text: 'Ukuran file .docx melebihi batas maksimal 10 MB.',
+      });
+      return;
+    }
+
     setStatusFeedback(null);
     setIsParsingDocx(true);
     try {
-      const parsed = await parseDocxFileToTemplate(file);
+      const [parsed, docxDataUrl] = await Promise.all([
+        parseDocxFileToTemplate(file),
+        readFileAsDataUrl(file),
+      ]);
       setFileNamaAsli(file.name);
+      setFileDocxDataUrl(docxDataUrl);
       if (!namaTemplate.trim()) {
         setNamaTemplate(file.name.replace(/\.docx$/i, '').replace(/[_-]+/g, ' '));
       }
+      setSertakanKopResmi(true);
       setPrefillData(parsed.prefillData);
-      syncEditorContent(parsed.kontenHtml);
+      if (Object.values(parsed.prefillData).some((v) => Boolean(v))) {
+        setIsPrefillOpen(true);
+      }
+      syncEditorContent(DEFAULT_STARTER_TEMPLATE_HTML);
       setStatusFeedback({
         type: 'success',
-        text: `Berhasil membaca isi file "${file.name}". Anda dapat mengedit teks di kertas A4 sebelum mengirim ke User.`,
+        text: `File "${file.name}" berhasil dilampirkan untuk diunduh User, dan format surat standar A4 telah dimuat rapi.`,
       });
     } catch (err) {
       setStatusFeedback({
@@ -149,7 +156,7 @@ export const TemplateSuratPage = () => {
     setKontenHtml(editorRef.current.innerHTML);
   };
 
-  const handleSaveAndSend = (e: React.FormEvent) => {
+  const handleSaveAndSend = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusFeedback(null);
 
@@ -159,12 +166,22 @@ export const TemplateSuratPage = () => {
     }
 
     const latestHtml = editorRef.current ? editorRef.current.innerHTML : kontenHtml;
-    const saved = saveTemplate({
+    if (!latestHtml.replace(/<[^>]+>/g, '').trim() && !latestHtml.includes('<img')) {
+      setStatusFeedback({
+        type: 'error',
+        text: 'Kertas template masih kosong. Unggah file .docx atau ketik isi surat di kertas A4 terlebih dahulu.',
+      });
+      return;
+    }
+
+    const result = await saveTemplate({
       id: editingId || undefined,
       namaTemplate: namaTemplate.trim(),
       deskripsi: deskripsi.trim() || undefined,
       kategoriTemplate,
       fileNamaAsli: fileNamaAsli || undefined,
+      fileDocxDataUrl: fileDocxDataUrl || undefined,
+      hasFileDocx: Boolean(fileDocxDataUrl || fileNamaAsli),
       kontenHtml: latestHtml,
       sertakanKopResmi,
       prefillData,
@@ -172,10 +189,12 @@ export const TemplateSuratPage = () => {
       aktif: true,
     });
 
-    setEditingId(saved.id);
+    setEditingId(result.data.id);
     setStatusFeedback({
       type: 'success',
-      text: `Template "${saved.namaTemplate}" berhasil dikirim & aktif untuk seluruh akun User (Pegawai).`,
+      text: result.persistedToDb
+        ? `Template "${result.data.namaTemplate}" berhasil disimpan ke database PostgreSQL & aktif untuk seluruh User.`
+        : `Template "${result.data.namaTemplate}" aktif untuk User (tersimpan di penyimpanan lokal karena server backend belum aktif).`,
     });
   };
 
@@ -185,8 +204,10 @@ export const TemplateSuratPage = () => {
     setDeskripsi(tpl.deskripsi || '');
     setKategoriTemplate(tpl.kategoriTemplate);
     setFileNamaAsli(tpl.fileNamaAsli || '');
+    setFileDocxDataUrl(tpl.fileDocxDataUrl || '');
     setSertakanKopResmi(tpl.sertakanKopResmi);
     setPrefillData(tpl.prefillData || {});
+    setIsPrefillOpen(Boolean(tpl.prefillData && Object.values(tpl.prefillData).some(Boolean)));
     setStatusFeedback(null);
     syncEditorContent(tpl.kontenHtml);
   };
@@ -237,13 +258,13 @@ export const TemplateSuratPage = () => {
       )}
 
       {/* Main Split Workspace: Upload & Settings (Left) + Live A4 Editor (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         <form
           onSubmit={handleSaveAndSend}
           className="lg:col-span-5 bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] space-y-4"
         >
-          {/* Upload .docx Box */}
-          <div className="rounded-2xl border-2 border-dashed border-blue-200 bg-[#F8FAFD] p-4 text-center space-y-2">
+          {/* Upload .docx Compact Bar */}
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-blue-200 bg-[#F8FAFD] px-3.5 py-3">
             <input
               ref={fileInputRef}
               type="file"
@@ -251,132 +272,142 @@ export const TemplateSuratPage = () => {
               onChange={handleUploadDocx}
               className="hidden"
             />
-            <div className="mx-auto w-10 h-10 rounded-xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center">
-              <UploadCloud className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-800">
-                Unggah File Template MS Word (.docx)
-              </p>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Isi file Word akan diekstrak ke kertas A4 di sebelah kanan agar bisa Anda edit dulu sebelum dikirim ke User.
-              </p>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center shrink-0">
+                <UploadCloud className="w-4.5 h-4.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800 truncate">
+                  Impor dari MS Word (.docx)
+                </p>
+                <p className="text-[11px] text-slate-500 truncate">
+                  {fileNamaAsli ? `Dimuat: ${fileNamaAsli}` : 'Ekstrak isi file ke editor kertas A4'}
+                </p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isParsingDocx}
-              className="inline-flex items-center gap-2 rounded-full bg-[#1D4ED8] hover:bg-[#1E40AF] px-4 py-2 text-xs font-bold text-white shadow-sm transition cursor-pointer disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D4ED8] hover:bg-[#1E40AF] px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition cursor-pointer disabled:opacity-60 shrink-0"
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              {isParsingDocx ? 'Membaca .docx...' : 'Pilih File .docx'}
+              {isParsingDocx ? 'Membaca...' : 'Pilih File'}
             </button>
-            {fileNamaAsli && (
-              <p className="text-[11px] font-semibold text-emerald-700">
-                File dimuat: {fileNamaAsli}
-              </p>
-            )}
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Nama Template Surat
-            </label>
-            <input
-              type="text"
-              required
-              value={namaTemplate}
-              onChange={(e) => setNamaTemplate(e.target.value)}
-              placeholder="Contoh: Surat Tugas Uji Kompetensi Eksternal"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Nama Template Surat
+              </label>
+              <input
+                type="text"
+                required
+                value={namaTemplate}
+                onChange={(e) => setNamaTemplate(e.target.value)}
+                placeholder="Contoh: Surat Tugas Uji Kompetensi Eksternal"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                 Kategori Format Default
               </label>
               <select
                 value={kategoriTemplate}
                 onChange={(e) => setKategoriTemplate(e.target.value as KategoriTemplateSurat)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
               >
                 <option value="INDIVIDU">Individu (1 Orang)</option>
                 <option value="BERDUA">Berdua (2 Orang)</option>
                 <option value="KELOMPOK">Kelompok (Tim)</option>
               </select>
             </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sertakanKopResmi}
-                  onChange={(e) => setSertakanKopResmi(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 accent-blue-600"
-                />
-                Sertakan Kop Resmi &amp; Footer BSrE
-              </label>
-            </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Catatan / Keterangan Template (Opsional)
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-[#F8FAFD] px-3.5 py-2.5 cursor-pointer">
+              <span className="text-xs font-semibold text-slate-700">
+                Sertakan Kop Resmi Kemendikdasmen &amp; Footer BSrE
+              </span>
+              <input
+                type="checkbox"
+                checked={sertakanKopResmi}
+                onChange={(e) => setSertakanKopResmi(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 accent-blue-600 shrink-0"
+              />
             </label>
-            <textarea
-              rows={2}
-              value={deskripsi}
-              onChange={(e) => setDeskripsi(e.target.value)}
-              placeholder="Panduan singkat penggunaan template bagi pegawai..."
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
-          </div>
 
-          {/* Data Bawaan / Terdeteksi dari File */}
-          <div className="rounded-xl border border-slate-100 bg-[#F8FAFD] p-3.5 space-y-2.5">
-            <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#1D4ED8]" />
-              Nilai Bawaan Template (Otomatis Terisi &amp; Dapat Diubah User)
-            </p>
-            <p className="text-[11px] text-slate-500">
-              Jika file sudah memuat nama pegawai, nomor, atau perihal tertentu, nilai di bawah akan tampil langsung di User dan ikut ter-update saat User mengganti inputannya:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={prefillData.nomorSurat || ''}
-                onChange={(e) => setPrefillData({ ...prefillData, nomorSurat: e.target.value })}
-                placeholder="Nomor Surat bawaan"
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs"
-              />
-              <input
-                type="text"
-                value={prefillData.namaPegawai || ''}
-                onChange={(e) => setPrefillData({ ...prefillData, namaPegawai: e.target.value })}
-                placeholder="Nama Pegawai bawaan (jika ada)"
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs"
-              />
-              <input
-                type="text"
-                value={prefillData.perihal || ''}
-                onChange={(e) => setPrefillData({ ...prefillData, perihal: e.target.value })}
-                placeholder="Perihal bawaan"
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs sm:col-span-2"
-              />
-              <input
-                type="text"
-                value={prefillData.lokasiSpesifik || ''}
-                onChange={(e) => setPrefillData({ ...prefillData, lokasiSpesifik: e.target.value })}
-                placeholder="Lokasi bawaan"
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs sm:col-span-2"
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Catatan / Keterangan Template (Opsional)
+              </label>
+              <textarea
+                rows={2}
+                value={deskripsi}
+                onChange={(e) => setDeskripsi(e.target.value)}
+                placeholder="Panduan singkat penggunaan template bagi pegawai..."
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
               />
             </div>
+          </div>
+
+          {/* Nilai Bawaan (Collapsible agar panel kiri tetap ringkas & clean) */}
+          <div className="rounded-xl border border-slate-200/80 bg-[#F8FAFD] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsPrefillOpen((prev) => !prev)}
+              aria-expanded={isPrefillOpen}
+              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-slate-100/70 transition-colors cursor-pointer"
+            >
+              <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#1D4ED8]" />
+                Nilai Bawaan Otomatis (Opsional)
+              </span>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isPrefillOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isPrefillOpen && (
+              <div className="px-3.5 pb-3.5 pt-1 space-y-2 border-t border-slate-200/60">
+                <p className="text-[11px] text-slate-500">
+                  Diisi otomatis bila file membawa data awal; User tetap dapat mengubahnya di form.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={prefillData.nomorSurat || ''}
+                    onChange={(e) => setPrefillData({ ...prefillData, nomorSurat: e.target.value })}
+                    placeholder="Nomor Surat bawaan"
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs"
+                  />
+                  <input
+                    type="text"
+                    value={prefillData.namaPegawai || ''}
+                    onChange={(e) => setPrefillData({ ...prefillData, namaPegawai: e.target.value })}
+                    placeholder="Nama Pegawai bawaan"
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs"
+                  />
+                  <input
+                    type="text"
+                    value={prefillData.perihal || ''}
+                    onChange={(e) => setPrefillData({ ...prefillData, perihal: e.target.value })}
+                    placeholder="Perihal bawaan"
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs sm:col-span-2"
+                  />
+                  <input
+                    type="text"
+                    value={prefillData.lokasiSpesifik || ''}
+                    onChange={(e) => setPrefillData({ ...prefillData, lokasiSpesifik: e.target.value })}
+                    placeholder="Lokasi bawaan"
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs sm:col-span-2"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <button
             type="submit"
-            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#1D4ED8] hover:bg-[#1E40AF] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 transition cursor-pointer"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#1D4ED8] hover:bg-[#1E40AF] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition cursor-pointer"
           >
             <Send className="w-4 h-4" />
             {editingId ? 'Perbarui & Kirim Template ke User' : 'Kirim Template ke User'}
@@ -385,48 +416,105 @@ export const TemplateSuratPage = () => {
 
         {/* Right: Interactive A4 Editor */}
         <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-[#F8FAFD] px-4 py-2.5">
-            <span className="text-xs font-bold text-slate-700">
-              Editor Template Kertas A4 (Bisa Diedit Langsung)
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 bg-white px-4 py-2.5">
+            <span className="text-xs font-bold text-slate-800">
+              Editor Template Kertas A4
             </span>
-            <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5">
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('bold')} className="p-1.5 rounded hover:bg-slate-100 text-slate-700 cursor-pointer" title="Bold"><Bold className="w-3.5 h-3.5" /></button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('italic')} className="p-1.5 rounded hover:bg-slate-100 text-slate-700 cursor-pointer" title="Italic"><Italic className="w-3.5 h-3.5" /></button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('underline')} className="p-1.5 rounded hover:bg-slate-100 text-slate-700 cursor-pointer" title="Underline"><Underline className="w-3.5 h-3.5" /></button>
-              <div className="mx-1 h-4 w-px bg-slate-200" />
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('justifyLeft')} className="p-1.5 rounded hover:bg-slate-100 text-slate-700 cursor-pointer" title="Rata Kiri"><AlignLeft className="w-3.5 h-3.5" /></button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('justifyCenter')} className="p-1.5 rounded hover:bg-slate-100 text-slate-700 cursor-pointer" title="Rata Tengah"><AlignCenter className="w-3.5 h-3.5" /></button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('justifyRight')} className="p-1.5 rounded hover:bg-slate-100 text-slate-700 cursor-pointer" title="Rata Kanan"><AlignRight className="w-3.5 h-3.5" /></button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('justifyFull')} className="p-1.5 rounded hover:bg-slate-100 text-slate-700 cursor-pointer" title="Justify"><AlignJustify className="w-3.5 h-3.5" /></button>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Dropdown Variabel Ringkas (menggantikan 12 pill yang menumpuk 3 baris) */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsVarMenuOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-[#EEF3FB] px-2.5 py-1.5 text-[11px] font-semibold text-[#1D4ED8] hover:bg-blue-100 transition cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Sisipkan Variabel</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isVarMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isVarMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setIsVarMenuOpen(false)} />
+                    <div className="absolute right-0 top-full z-40 mt-1.5 w-72 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                      <p className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1.5">
+                        Klik untuk menyisipkan ke posisi kursor
+                      </p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {VARIABLE_TOKENS.map((item) => (
+                          <button
+                            key={item.token}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              insertTokenAtCursor(item.token);
+                              setIsVarMenuOpen(false);
+                            }}
+                            className="text-left rounded-lg px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-[#EEF3FB] hover:text-[#1D4ED8] transition cursor-pointer truncate"
+                            title={item.token}
+                          >
+                            + {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50/70 p-0.5">
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('bold')} className="p-1.5 rounded hover:bg-white text-slate-600 hover:text-[#1D4ED8] cursor-pointer" title="Bold"><Bold className="w-3.5 h-3.5" /></button>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('italic')} className="p-1.5 rounded hover:bg-white text-slate-600 hover:text-[#1D4ED8] cursor-pointer" title="Italic"><Italic className="w-3.5 h-3.5" /></button>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('underline')} className="p-1.5 rounded hover:bg-white text-slate-600 hover:text-[#1D4ED8] cursor-pointer" title="Underline"><Underline className="w-3.5 h-3.5" /></button>
+                <div className="mx-1 h-4 w-px bg-slate-200" />
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('justifyLeft')} className="p-1.5 rounded hover:bg-white text-slate-600 hover:text-[#1D4ED8] cursor-pointer" title="Rata Kiri"><AlignLeft className="w-3.5 h-3.5" /></button>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('justifyCenter')} className="p-1.5 rounded hover:bg-white text-slate-600 hover:text-[#1D4ED8] cursor-pointer" title="Rata Tengah"><AlignCenter className="w-3.5 h-3.5" /></button>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('justifyRight')} className="p-1.5 rounded hover:bg-white text-slate-600 hover:text-[#1D4ED8] cursor-pointer" title="Rata Kanan"><AlignRight className="w-3.5 h-3.5" /></button>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => execFormat('justifyFull')} className="p-1.5 rounded hover:bg-white text-slate-600 hover:text-[#1D4ED8] cursor-pointer" title="Justify"><AlignJustify className="w-3.5 h-3.5" /></button>
+              </div>
             </div>
           </div>
 
-          {/* Variabel Otomatis Bar */}
-          <div className="border-b border-slate-100 bg-blue-50/40 px-4 py-2 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-bold text-[#1E40AF] mr-1">Sisipkan Variabel Otomatis:</span>
-            {VARIABLE_TOKENS.map((item) => (
-              <button
-                key={item.token}
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => insertTokenAtCursor(item.token)}
-                className="rounded-full border border-blue-200 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[#1D4ED8] hover:bg-blue-100 transition cursor-pointer"
-                title={`Sisipkan ${item.token}`}
-              >
-                + {item.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="max-h-[70vh] overflow-y-auto bg-slate-200/70 p-4 sm:p-6 flex justify-center">
-            <div className="a4-paper-sheet w-full max-w-[210mm] min-h-[297mm] bg-white px-8 py-9 sm:px-12 sm:py-11 shadow-xl border border-slate-300">
+          <div className="max-h-[70vh] overflow-y-auto bg-slate-100/90 p-4 sm:p-6 flex justify-center">
+            <div className="relative a4-paper-sheet w-full max-w-[210mm] min-h-[297mm] bg-white px-7 py-8 sm:px-11 sm:py-10 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/90">
               {sertakanKopResmi && (
                 <div className="mb-4 select-none pointer-events-none">
-                  <img
-                    src={`${import.meta.env.BASE_URL}kop-kemendikdasmen.png`}
-                    alt="Kop Surat Kemendikdasmen"
-                    className="w-full h-auto block"
-                  />
+                  {!kopImgError ? (
+                    <img
+                      src={`${normalizedBaseUrl}kop-kemendikdasmen.png`}
+                      alt="Kop Surat Kemendikdasmen"
+                      onError={() => setKopImgError(true)}
+                      className="w-full h-auto block"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-3 border-b-2 border-slate-800 pb-2.5 text-left">
+                      <svg viewBox="0 0 64 64" className="h-12 w-12 shrink-0" aria-hidden="true">
+                        <circle cx="32" cy="32" r="29" fill="#0EA5E9" stroke="#0369A1" strokeWidth="2.5" />
+                        <path d="M32 14l5 10 11 1.6-8 7.8 1.9 11-9.9-5.2-9.9 5.2 1.9-11-8-7.8 11-1.6z" fill="#FFFFFF" />
+                      </svg>
+                      <div className="leading-tight">
+                        <p className="text-[11px] font-bold uppercase text-slate-900">
+                          Kementerian Pendidikan Dasar dan Menengah
+                        </p>
+                        <p className="text-[10px] font-semibold text-slate-700">
+                          Balai Besar Pengembangan Penjaminan Mutu Pendidikan Vokasi Bidang Mesin dan Teknik Industri
+                        </p>
+                        <p className="text-[9px] text-slate-500">
+                          Jalan Pasantren Km. 2, Cibabat, Cimahi Utara, Cimahi, Jawa Barat 40513
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!kontenHtml.trim() && (
+                <div className="pointer-events-none absolute inset-x-10 top-16 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 px-6 py-14 text-center font-sans">
+                  <UploadCloud className="h-8 w-8 text-blue-500 mb-2" />
+                  <p className="text-sm font-bold text-slate-700">Kertas Template Masih Kosong</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                    Unggah file <strong>.docx</strong> di panel kiri untuk menampilkan isi dokumen asli di sini, atau klik kertas ini untuk mengetik langsung.
+                  </p>
                 </div>
               )}
 
@@ -435,17 +523,23 @@ export const TemplateSuratPage = () => {
                 contentEditable
                 suppressContentEditableWarning
                 onInput={(e) => setKontenHtml(e.currentTarget.innerHTML)}
-                dangerouslySetInnerHTML={{ __html: DEFAULT_STARTER_TEMPLATE_HTML }}
-                className="outline-none min-h-[160mm]"
+                className="relative z-10 outline-none min-h-[220mm]"
               />
 
               {sertakanKopResmi && (
                 <div className="mt-8 select-none pointer-events-none">
-                  <img
-                    src={`${import.meta.env.BASE_URL}footer-bsre.jpg`}
-                    alt="Catatan Kaki BSrE"
-                    className="w-full h-auto block"
-                  />
+                  {!footerImgError ? (
+                    <img
+                      src={`${normalizedBaseUrl}footer-bsre.jpg`}
+                      alt="Catatan Kaki BSrE"
+                      onError={() => setFooterImgError(true)}
+                      className="w-full h-auto block"
+                    />
+                  ) : (
+                    <div className="border-t border-slate-300 pt-2 text-[9px] text-slate-500">
+                      Dokumen ini telah ditandatangani secara elektronik menggunakan sertifikat elektronik yang diterbitkan oleh Balai Besar Sertifikasi Elektronik (BSrE), BSSN.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -507,6 +601,16 @@ export const TemplateSuratPage = () => {
                   >
                     <Edit3 className="w-3.5 h-3.5" /> Edit
                   </button>
+                  {(tpl.hasFileDocx || tpl.fileDocxDataUrl || tpl.fileNamaAsli) && (
+                    <button
+                      type="button"
+                      onClick={() => void downloadTemplateDocx(tpl)}
+                      className="inline-flex items-center justify-center gap-1 rounded-lg bg-white border border-blue-200 px-2.5 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 cursor-pointer"
+                      title="Unduh file .docx asli"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Unduh
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => toggleTemplateActive(tpl.id)}

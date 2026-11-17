@@ -118,20 +118,25 @@ export const ApprovalTugasPage = () => {
     : [];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-5">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Persetujuan Surat Tugas</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Tinjau dan proses pengajuan surat tugas dari unit kerja Anda.
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)]">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center shrink-0">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Persetujuan Surat Tugas</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Tinjau dan proses pengajuan surat tugas dari unit kerja Anda.
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={selectedUnit}
             onChange={(e) => setSelectedUnit(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="rounded-xl border border-slate-200 bg-[#F8FAFD] px-3 py-2 text-xs sm:text-sm text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
           >
             <option value="ALL">Semua Unit Kerja</option>
             <option value="RBI">RBI</option>
@@ -140,12 +145,12 @@ export const ApprovalTugasPage = () => {
             <option value="PM">PM</option>
           </select>
 
-          <div className="flex bg-slate-100 p-1 rounded-lg w-full md:w-fit">
+          <div className="flex bg-[#EEF3FB] p-1 rounded-full w-full md:w-fit">
             <button
               onClick={() => setActiveTab('PENDING')}
-              className={`flex-1 md:flex-none px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              className={`flex-1 md:flex-none px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-full transition-all cursor-pointer ${
                 activeTab === 'PENDING' 
-                  ? 'bg-white text-blue-700 shadow-sm' 
+                  ? 'bg-white text-[#1D4ED8] shadow-xs' 
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -158,9 +163,9 @@ export const ApprovalTugasPage = () => {
             </button>
             <button
               onClick={() => setActiveTab('RIWAYAT')}
-              className={`flex-1 md:flex-none px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              className={`flex-1 md:flex-none px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-full transition-all cursor-pointer ${
                 activeTab === 'RIWAYAT' 
-                  ? 'bg-white text-blue-700 shadow-sm' 
+                  ? 'bg-white text-[#1D4ED8] shadow-xs' 
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -247,16 +252,16 @@ export const ApprovalTugasPage = () => {
       )}
 
       {/* Table Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase font-semibold">
-                <th className="p-4">Informasi Surat</th>
-                <th className="p-4">Pegawai Ditugaskan</th>
-                <th className="p-4">Pelaksanaan</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-center">Aksi</th>
+              <tr className="bg-[#F8FAFD] border-b border-slate-100 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                <th className="py-3.5 px-5">Informasi Surat</th>
+                <th className="py-3.5 px-5">Pegawai Ditugaskan</th>
+                <th className="py-3.5 px-5">Pelaksanaan</th>
+                <th className="py-3.5 px-5">Status</th>
+                <th className="py-3.5 px-5 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

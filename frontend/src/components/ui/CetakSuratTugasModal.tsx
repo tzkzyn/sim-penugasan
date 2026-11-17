@@ -792,9 +792,11 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
   const internalRef = useRef<HTMLDivElement>(null);
   const editorRef = externalRef || internalRef;
   const [variantOverride, setVariantOverride] = useState<KategoriTemplateSurat | null>(null);
-  const [hasManualEdit, setHasManualEdit] = useState<boolean>(() =>
-    Boolean(initialHtml && initialHtml.trim().length > 0)
+  const templateIdentityKey = `${data.id ?? ''}:${customTemplate?.id ?? ''}:${customTemplate?.diperbaruiPada ?? ''}:${Boolean(initialHtml && initialHtml.trim().length > 0)}`;
+  const [manualEditKey, setManualEditKey] = useState<string | null>(() =>
+    initialHtml && initialHtml.trim().length > 0 ? templateIdentityKey : null
   );
+  const hasManualEdit = manualEditKey === templateIdentityKey;
   const [internalSigOpen, setInternalSigOpen] = useState(false);
 
   // Kunci ketat posisi tanda tangan sesuai role akun yang login:
@@ -889,8 +891,10 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
       dasarSuratTanggal: effectiveData.dasarSuratTanggal,
       sumberBiaya: effectiveData.sumberBiaya,
       namaKepala: effectiveData.namaKepala,
-      pengajuId: effectiveData.pengaju?.id,
-      pegawaiIds: effectiveData.pegawaiDitugaskan.map((p) => p.id),
+      pengajuKey: `${effectiveData.pengaju?.id || ''}:${effectiveData.pengaju?.nama || ''}`,
+      pegawaiKey: effectiveData.pegawaiDitugaskan
+        .map((p) => `${p.id}:${p.nama}:${p.nip}:${p.pangkatGolongan || ''}:${p.jabatan}`)
+        .join('|'),
       ttdUserPng: effectiveData.ttdUserPng,
       ttdUserSignerName: effectiveData.ttdUserSignerName,
       ttdUserSignedAt: effectiveData.ttdUserSignedAt,
@@ -899,15 +903,6 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
       ttdApprovalSignedAt: effectiveData.ttdApprovalSignedAt,
       allowedRole,
     });
-
-    const prevCustomTemplateIdRef = useRef<string | null>(customTemplate?.id ?? null);
-    useEffect(() => {
-      const nextId = customTemplate?.id ?? null;
-      if (prevCustomTemplateIdRef.current !== nextId) {
-        prevCustomTemplateIdRef.current = nextId;
-        setHasManualEdit(false);
-      }
-    }, [customTemplate?.id]);
 
     // Inisialisasi konten awal saat dokumen dibuka
     useEffect(() => {
@@ -946,7 +941,7 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
 
     const handleEditorInput = () => {
       if (!editorRef.current) return;
-      setHasManualEdit(true);
+      setManualEditKey(templateIdentityKey);
       if (onChangeHtml) {
         onChangeHtml(enforceSignatureIntegrityHtml(editorRef.current.innerHTML, effectiveData, allowedRole));
       }
@@ -954,7 +949,7 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
 
     const applyTemplateVariant = (variant: KategoriTemplateSurat) => {
       setVariantOverride(variant);
-      setHasManualEdit(false);
+      setManualEditKey(null);
       const freshHtml = buildResolvedHtml(variant);
       if (editorRef.current) {
         editorRef.current.innerHTML = freshHtml;
@@ -966,7 +961,7 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
 
   const handleSyncFromForm = () => {
     setVariantOverride(null);
-    setHasManualEdit(false);
+    setManualEditKey(null);
     const syncedVariant =
       data.kategoriTemplate ?? resolveKategoriTemplate(effectiveData.pegawaiDitugaskan.length);
     const freshHtml = buildResolvedHtml(syncedVariant);

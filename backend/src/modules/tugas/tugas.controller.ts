@@ -79,3 +79,44 @@ export class PegawaiController {
     return this.tugasService.deletePegawai(id);
   }
 }
+
+@Controller('templates')
+export class TemplatesController {
+  constructor(private readonly tugasService: TugasService) {}
+
+  @Get()
+  getTemplates() {
+    return this.tugasService.findAllTemplates();
+  }
+
+  @Get(':id')
+  async getTemplateById(@Param('id') id: string) {
+    const found = await this.tugasService.findOneTemplate(id);
+    if (!found) {
+      throw new NotFoundException('Template surat tidak ditemukan.');
+    }
+    return found;
+  }
+
+  @Post()
+  createTemplate(@Body() body: Record<string, unknown>) {
+    return this.tugasService.createTemplate(body);
+  }
+
+  @Patch(':id')
+  async updateTemplate(
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    const updated = await this.tugasService.updateTemplate(id, body);
+    if (!updated) {
+      throw new NotFoundException('Template surat tidak ditemukan.');
+    }
+    return updated;
+  }
+
+  @Delete(':id')
+  deleteTemplate(@Param('id') id: string) {
+    return this.tugasService.deleteTemplate(id);
+  }
+}

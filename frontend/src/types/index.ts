@@ -175,6 +175,8 @@ export interface TemplateSuratResmi {
   deskripsi?: string;
   kategoriTemplate: KategoriTemplateSurat;
   fileNamaAsli?: string;
+  fileDocxDataUrl?: string;
+  hasFileDocx?: boolean;
   kontenHtml: string;
   sertakanKopResmi: boolean;
   prefillData?: TemplatePrefillData;

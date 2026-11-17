@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { axiosInstance } from './axiosInstance';
 import { dummyAjuanSuratTugas, dummyPegawaiList } from '@/data/dummyData';
-import type { AjuanSuratTugas, Pegawai } from '@/types';
+import type { AjuanSuratTugas, Pegawai, TemplateSuratResmi } from '@/types';
 
 const extractErrorInfo = (error: unknown): { isNetworkError: boolean; message?: string } => {
   if (axios.isAxiosError(error) && error.response) {
@@ -127,7 +127,56 @@ export const apiService = {
     }
   },
 
-  // 6. Auth Login
+  // 6. Template Surat Resmi (PostgreSQL CRUD)
+  async getTemplates() {
+    try {
+      const response = await axiosInstance.get<TemplateSuratResmi[]>('/templates');
+      return { success: true as const, data: response.data };
+    } catch {
+      return { success: false as const, fallback: true };
+    }
+  },
+
+  async getTemplateById(id: string) {
+    try {
+      const response = await axiosInstance.get<TemplateSuratResmi>(`/templates/${id}`);
+      return { success: true as const, data: response.data };
+    } catch {
+      return { success: false as const, fallback: true };
+    }
+  },
+
+  async createTemplate(templateData: Partial<TemplateSuratResmi>) {
+    try {
+      const response = await axiosInstance.post<TemplateSuratResmi>('/templates', templateData);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  async updateTemplate(id: string, templateData: Partial<TemplateSuratResmi>) {
+    try {
+      const response = await axiosInstance.patch<TemplateSuratResmi>(`/templates/${id}`, templateData);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  async deleteTemplate(id: string) {
+    try {
+      const response = await axiosInstance.delete<TemplateSuratResmi>(`/templates/${id}`);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  // 7. Auth Login
   async login(email: string, password: string) {
     try {
       const response = await axiosInstance.post('/auth/login', { email, password });

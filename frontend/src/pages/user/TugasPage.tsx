@@ -92,6 +92,7 @@ export const TugasPage = () => {
     createTask,
     updateTask,
     updateTaskStatus,
+    downloadTemplateDocx,
   } = usePenugasan();
   const activeApprovalTemplates = useMemo(() => templates.filter((t) => t.aktif), [templates]);
 
@@ -134,12 +135,13 @@ export const TugasPage = () => {
 
   const createEmptyFormState = () => {
     const unit = (currentPegawai?.unitKerja || 'RBI') as UnitKerjaType;
+    const selfPegawaiIds = currentPegawai?.id ? [currentPegawai.id] : [];
     return {
       nomorSurat: '',
       perihal: '',
       unitKerja: unit,
       kategoriTemplate: 'INDIVIDU' as KategoriTemplateSurat,
-      pegawaiIds: [] as string[],
+      pegawaiIds: selfPegawaiIds,
       tanggalMulai: '',
       tanggalSelesai: '',
       jamMulai: DEFAULT_JAM_MULAI,
@@ -168,9 +170,15 @@ export const TugasPage = () => {
 
   const [formData, setFormData] = useState(createEmptyFormState);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const effectiveSelectedTemplateId =
+    selectedTemplateId && activeApprovalTemplates.some((t) => t.id === selectedTemplateId)
+      ? selectedTemplateId
+      : !editingTaskId && activeApprovalTemplates[0]
+        ? activeApprovalTemplates[0].id
+        : '';
   const selectedApprovalTemplate = useMemo(
-    () => activeApprovalTemplates.find((t) => t.id === selectedTemplateId) || null,
-    [activeApprovalTemplates, selectedTemplateId],
+    () => activeApprovalTemplates.find((t) => t.id === effectiveSelectedTemplateId) || null,
+    [activeApprovalTemplates, effectiveSelectedTemplateId],
   );
 
   const applyApprovalTemplateToForm = (tplId: string) => {
@@ -180,19 +188,19 @@ export const TugasPage = () => {
     if (!tpl) return;
     const pf = tpl.prefillData;
     setFormData((prev) => {
-      let nextPegawaiIds = prev.pegawaiIds;
-      if (pf?.namaPegawai || pf?.nip) {
-        const matched = pegawaiOptions.find(
-          (p) =>
-            (pf.nip && p.nip === pf.nip) ||
-            (pf.namaPegawai && p.nama.toLowerCase().includes(pf.namaPegawai.toLowerCase())),
-        );
-        if (matched) nextPegawaiIds = [matched.id];
-      }
+      const ensuredPegawaiIds =
+        prev.pegawaiIds.length > 0
+          ? prev.pegawaiIds
+          : currentPegawai?.id
+            ? [currentPegawai.id]
+            : [];
       return {
         ...prev,
-        kategoriTemplate: tpl.kategoriTemplate || prev.kategoriTemplate,
-        pegawaiIds: nextPegawaiIds,
+        kategoriTemplate:
+          ensuredPegawaiIds.length > 1
+            ? resolveKategoriTemplate(ensuredPegawaiIds.length)
+            : tpl.kategoriTemplate || prev.kategoriTemplate,
+        pegawaiIds: ensuredPegawaiIds,
         nomorSurat: pf?.nomorSurat || prev.nomorSurat,
         perihal: pf?.perihal || prev.perihal,
         lokasiSpesifik: pf?.lokasiSpesifik || prev.lokasiSpesifik,
@@ -213,20 +221,11 @@ export const TugasPage = () => {
     const newestTpl = activeApprovalTemplates[0];
     if (newestTpl) {
       const pf = newestTpl.prefillData;
-      let nextPegawaiIds = fresh.pegawaiIds;
-      if (pf?.namaPegawai || pf?.nip) {
-        const matched = pegawaiOptions.find(
-          (p) =>
-            (pf.nip && p.nip === pf.nip) ||
-            (pf.namaPegawai && p.nama.toLowerCase().includes(pf.namaPegawai.toLowerCase())),
-        );
-        if (matched) nextPegawaiIds = [matched.id];
-      }
       setSelectedTemplateId(newestTpl.id);
       setFormData({
         ...fresh,
         kategoriTemplate: newestTpl.kategoriTemplate || fresh.kategoriTemplate,
-        pegawaiIds: nextPegawaiIds,
+        pegawaiIds: fresh.pegawaiIds,
         nomorSurat: pf?.nomorSurat || '',
         perihal: pf?.perihal || '',
         lokasiSpesifik: pf?.lokasiSpesifik || '',
@@ -716,7 +715,7 @@ export const TugasPage = () => {
         </div>
 
         {/* Filter Controls Horizontal Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="relative">
             <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Unit Kerja</p>
             <button
@@ -783,7 +782,7 @@ export const TugasPage = () => {
             onReset={() => setSelectedApplicants([])}
           />
           <CheckboxDropdown
-            label="Pegawai Ditugaskan"
+            label="Pelaksana"
             options={assigneeOptions}
             selected={selectedAssignees}
             isOpen={openFilter === 'assignee'}
@@ -828,15 +827,13 @@ export const TugasPage = () => {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-[#F8FAFD] text-slate-600 text-xs font-bold uppercase tracking-wider border-b border-slate-100">
+              <thead className="bg-[#F8FAFD] text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
                 <tr>
-                  <th className="px-6 py-4">Nomor & Perihal Surat</th>
-                  <th className="px-6 py-4">Unit Kerja & Pengaju</th>
-                  <th className="px-6 py-4">Pegawai Ditugaskan</th>
-                  <th className="px-6 py-4">Tanggal & Domisili</th>
-                  <th className="px-6 py-4">Lokasi</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Aksi</th>
+                  <th className="px-5 py-3.5">Surat &amp; Pengaju</th>
+                  <th className="px-5 py-3.5">Pelaksana</th>
+                  <th className="px-5 py-3.5">Jadwal &amp; Lokasi</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -850,19 +847,26 @@ export const TugasPage = () => {
                   );
 
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4 min-w-[380px]">
-                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-5 py-4 align-top max-w-sm">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/80">
                             {item.nomorSurat}
                           </span>
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200/80">
                             {getKategoriLabel(kategori)}
                           </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${unitColor.bg} ${unitColor.text}`}>
+                            {item.unitKerja}
+                          </span>
                         </div>
-                        <p className="font-semibold text-slate-800 whitespace-nowrap">{item.perihal}</p>
+                        <p className="font-semibold text-slate-800 line-clamp-2 leading-snug">{item.perihal}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Pengaju: <span className="font-medium text-slate-700">{item.pengaju.nama}</span>
+                          {item.pengaju.nip && item.pengaju.nip !== '-' ? ` • ${item.pengaju.nip}` : ''}
+                        </p>
                         {item.filePerbaikanNama && (
-                          <p className="mt-1 text-[11px] font-medium text-indigo-700">
+                          <p className="mt-1 text-[11px] font-medium text-indigo-700 truncate">
                             File Perbaikan: {item.filePerbaikanNama}
                           </p>
                         )}
@@ -872,50 +876,43 @@ export const TugasPage = () => {
                           </p>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${unitColor.bg} ${unitColor.text} mb-1`}>
-                          {item.unitKerja}
-                        </span>
-                        <p className="text-xs font-medium text-slate-600">Oleh: {item.pengaju.nama}</p>
-                        <p className="text-[11px] text-slate-500">NIP: {item.pengaju.nip}</p>
-                      </td>
-                      <td className="px-6 py-4 min-w-[170px] align-top">
+                      <td className="px-5 py-4 align-top whitespace-nowrap">
                         {item.pegawaiDitugaskan.length === 1 ? (
-                          <p className="text-xs font-semibold text-slate-800 whitespace-nowrap">
+                          <p className="text-xs font-semibold text-slate-800">
                             {item.pegawaiDitugaskan[0].nama}
                           </p>
                         ) : (
                           <button
                             type="button"
                             onClick={() => setSelectedPegawaiAjuan(item)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 cursor-pointer"
                             aria-label={`Lihat ${item.pegawaiDitugaskan.length} pegawai yang ditugaskan`}
                           >
-                            <Users className="h-3.5 w-3.5" />
+                            <Users className="h-3.5 w-3.5 shrink-0" />
                             {item.pegawaiDitugaskan.length} Pegawai
                           </button>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="text-xs font-semibold text-slate-800">
+                      <td className="px-5 py-4 align-top min-w-[210px]">
+                        <p className="text-xs font-semibold text-slate-800 whitespace-nowrap">
                           {formatRentangTanggal(item.tanggalMulai, item.tanggalSelesai)}
                         </p>
-                        <p className="text-[11px] font-medium text-blue-700 mt-0.5">
+                        <p className="text-[11px] font-medium text-blue-700 mt-0.5 whitespace-nowrap">
                           {formatJamRange(item.jamMulai, item.jamSelesai)}
                         </p>
-                        <div className="flex items-center gap-1 text-slate-500 text-xs mt-0.5">
-                          <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                          <span>{formatLokasiKhusus(item.lokasiPenugasan)}</span>
+                        <div className="flex items-start gap-1 text-slate-500 text-xs mt-1">
+                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                          <span className="line-clamp-2">
+                            {item.lokasiSpesifik ? `${item.lokasiSpesifik} • ` : ''}
+                            {formatLokasiKhusus(item.lokasiPenugasan)}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 min-w-[190px] align-top">
-                        <p className="text-xs font-semibold text-slate-800 whitespace-nowrap">{item.lokasiSpesifik || '-'}</p>
-                      </td>
                       <td
-                        className="relative px-6 py-4"
+                        className="relative px-5 py-4 align-top whitespace-nowrap"
                         onMouseLeave={() => setOpenStatusId((current) => current === item.id ? null : current)}
                       >
-                        <div className="flex flex-col items-start gap-1">
+                        <div className="flex flex-col items-start gap-1.5">
                           <button
                             type="button"
                             onClick={() => {
@@ -930,26 +927,26 @@ export const TugasPage = () => {
                           </button>
                           {itemConflicts.length > 0 && (
                             <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-700">
-                              <AlertTriangle className="w-3 h-3" /> Bentrok Jadwal (Ganti Orang)
+                              <AlertTriangle className="w-3 h-3 shrink-0" /> Bentrok Jadwal
                             </span>
                           )}
                         </div>
                         {openStatusId === item.id && (
-                          <div className="absolute left-6 top-14 z-20 w-40 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
-                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'SURAT_TERBIT')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
+                          <div className="absolute left-5 top-14 z-20 w-40 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'SURAT_TERBIT')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer">
                               <CheckCircle2 className="w-4 h-4" /> Diapprove
                             </button>
-                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'VERIFIKASI_SUBBAGIAN')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'VERIFIKASI_SUBBAGIAN')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer">
                               <Hourglass className="w-4 h-4" /> Diproses
                             </button>
-                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'DITOLAK')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'DITOLAK')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer">
                               <X className="w-4 h-4" /> Dibatalkan
                             </button>
                           </div>
                         )}
                       </td>
                       <td
-                        className="relative px-6 py-4 text-right"
+                        className="relative px-5 py-4 align-top text-right whitespace-nowrap"
                         onMouseLeave={() => setOpenActionId((current) => current === item.id ? null : current)}
                       >
                         <button
@@ -958,14 +955,14 @@ export const TugasPage = () => {
                             setOpenActionId(openActionId === item.id ? null : item.id);
                             setOpenStatusId(null);
                           }}
-                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-100 p-2 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer"
+                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer"
                           aria-label={`Aksi ajuan ${item.nomorSurat}`}
                           aria-expanded={openActionId === item.id}
                         >
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
                         {openActionId === item.id && (
-                          <div className="absolute right-6 top-14 z-20 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg text-left">
+                          <div className="absolute right-5 top-14 z-20 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg text-left">
                             <button
                               type="button"
                               onClick={() => {
@@ -1022,6 +1019,13 @@ export const TugasPage = () => {
                     </tr>
                   );
                 })}
+                {filteredAjuan.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">
+                      Belum ada ajuan surat tugas yang sesuai filter saat ini.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -1371,7 +1375,7 @@ export const TugasPage = () => {
                           Template dari Approval ({activeApprovalTemplates.length} Tersedia)
                         </label>
                         <select
-                          value={selectedTemplateId}
+                          value={effectiveSelectedTemplateId}
                           onChange={(e) => applyApprovalTemplateToForm(e.target.value)}
                           className="w-full px-3 py-2 border border-blue-200 rounded-xl text-xs font-semibold text-slate-800 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                         >
@@ -1382,6 +1386,19 @@ export const TugasPage = () => {
                             </option>
                           ))}
                         </select>
+                        {selectedApprovalTemplate &&
+                          (selectedApprovalTemplate.hasFileDocx ||
+                            selectedApprovalTemplate.fileDocxDataUrl ||
+                            selectedApprovalTemplate.fileNamaAsli) && (
+                            <button
+                              type="button"
+                              onClick={() => void downloadTemplateDocx(selectedApprovalTemplate)}
+                              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#1D4ED8] hover:underline cursor-pointer pt-0.5"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Unduh file asli ({selectedApprovalTemplate.fileNamaAsli || 'template.docx'})
+                            </button>
+                          )}
                       </div>
                     )}
 

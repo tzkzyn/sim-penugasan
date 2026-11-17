@@ -56,20 +56,20 @@ type CheckboxDropdownProps = {
 
 const CheckboxDropdown = ({ label, options, selected, isOpen, onToggle, onChange, onReset }: CheckboxDropdownProps) => (
   <div className="relative">
-    <p className="mb-2 text-sm font-medium text-slate-800">{label}</p>
-    <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-600 transition-colors hover:border-blue-400 hover:bg-blue-50" aria-expanded={isOpen}>
-      <span className="max-w-[190px] truncate">{selected.length === 0 ? `Pilih ${label}` : `${selected.length} dipilih`}</span>
-      <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
+    <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-[#F8FAFD] px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-blue-300 hover:bg-white cursor-pointer" aria-expanded={isOpen}>
+      <span className="truncate">{selected.length === 0 ? `Semua ${label}` : `${selected.length} dipilih`}</span>
+      <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
     </button>
     {isOpen && (
-      <div className={`absolute right-0 z-40 max-h-72 w-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl ${label === 'Status' ? 'bottom-full mb-2' : 'top-full mt-2'}`} onMouseLeave={onToggle}>
+      <div className="absolute left-0 top-full z-40 mt-2 max-h-72 w-60 overflow-y-auto rounded-xl border border-slate-100 bg-white p-2 shadow-xl" onMouseLeave={onToggle}>
         <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-2">
           <span className="text-xs font-bold text-slate-700">{label}</span>
-          {selected.length > 0 && <button type="button" onClick={onReset} className="text-[11px] font-semibold text-blue-600 hover:underline">Reset</button>}
+          {selected.length > 0 && <button type="button" onClick={onReset} className="text-[11px] font-semibold text-[#1D4ED8] hover:underline cursor-pointer">Reset</button>}
         </div>
         <div className="space-y-1 pt-2">
           {options.map((option) => (
-            <label key={option.value} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs text-slate-700 hover:bg-slate-50">
+            <label key={option.value} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs text-slate-700 hover:bg-[#F3F6FB]">
               <input type="checkbox" checked={selected.includes(option.value)} onChange={() => onChange(option.value)} className="h-4 w-4 rounded border-slate-300 accent-blue-600 focus:ring-blue-500" />
               <span className="truncate">{option.label}</span>
             </label>
@@ -206,58 +206,75 @@ export const TugasPage = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-2 sm:p-4 space-y-5 max-w-7xl mx-auto">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <FileText className="w-7 h-7 text-blue-600" />
-            <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Manajemen Penugasan Pegawai</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)]">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center shrink-0">
+            <FileText className="w-6 h-6" />
           </div>
-          <p className="text-slate-500 text-sm mt-1">
-            Kelola proses ajuan surat tugas dan pelacakan status penugasan instansi.
-          </p>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Manajemen Penugasan Pegawai</h2>
+            <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
+              Kelola proses ajuan surat tugas dan pelacakan status penugasan instansi.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Navigation, Filter Sidebar, and Table */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <aside className="w-full rounded-2xl border border-slate-200 bg-white p-5 shadow-xs lg:sticky lg:top-6">
-        <h3 className="mb-5 text-3xl font-normal tracking-tight text-slate-800">Pencarian</h3>
-        <div className="flex flex-col items-start gap-4">
-        {/* Sub-menu Tabs */}
-        <div className="flex items-center bg-slate-200/70 p-1.5 rounded-xl text-sm font-medium w-fit">
+      {/* Horizontal Filter Bar + Full-Width Table */}
+      <div className="space-y-5">
+      <section className="w-full rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center bg-[#EEF3FB] p-1 rounded-full text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setActiveTab('DAFTAR')}
+                className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'DAFTAR' ? 'bg-white text-[#1D4ED8] font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                Daftar Proses Ajuan ST ({ajuanList.length})
+              </button>
+            </div>
+            <span className="text-xs text-slate-500">
+              Menampilkan <strong className="text-slate-800">{filteredAjuan.length}</strong> dari {ajuanList.length} data
+            </span>
+          </div>
+
           <button
-            onClick={() => setActiveTab('DAFTAR')}
-            className={`px-4 py-2 rounded-lg transition-all cursor-pointer ${activeTab === 'DAFTAR' ? 'bg-white text-blue-700 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
+            type="button"
+            onClick={resetFilters}
+            className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-3.5 py-1.5 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 cursor-pointer"
           >
-            Daftar Proses Ajuan ST ({ajuanList.length})
+            <X className="w-3.5 h-3.5" />
+            Reset Filter
           </button>
         </div>
-        {/* Filter Controls */}
-        <div className="flex w-full flex-col items-stretch justify-start gap-4">
+
+        {/* Filter Controls Horizontal Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="relative">
-            <p className="mb-2 text-sm font-medium text-slate-800">Unit Kerja</p>
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Unit Kerja</p>
             <button
               type="button"
               onClick={() => setIsUnitFilterOpen((isOpen) => !isOpen)}
-              className="flex w-full items-center justify-start gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-600 transition-colors hover:border-blue-400 hover:bg-blue-50"
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-[#F8FAFD] px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-blue-300 hover:bg-white cursor-pointer"
               aria-expanded={isUnitFilterOpen}
             >
-              <Filter className="h-4 w-4 text-slate-400" />
-              <span>
+              <span className="inline-flex items-center gap-1.5 truncate">
+                <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                 {selectedUnits.length === 0
-                  ? 'Semua Unit Kerja'
+                  ? 'Semua Unit'
                   : selectedUnits.length === 1
                     ? selectedUnits[0]
                     : `${selectedUnits.length} unit dipilih`}
               </span>
+              <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform ${isUnitFilterOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isUnitFilterOpen && (
               <div
-                className="absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"
+                className="absolute left-0 top-full z-40 mt-2 w-56 rounded-xl border border-slate-100 bg-white p-2 shadow-xl"
                 onMouseLeave={() => setIsUnitFilterOpen(false)}
               >
                 <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-2">
@@ -266,7 +283,7 @@ export const TugasPage = () => {
                     <button
                       type="button"
                       onClick={() => setSelectedUnits([])}
-                      className="text-[11px] font-semibold text-blue-600 hover:underline"
+                      className="text-[11px] font-semibold text-[#1D4ED8] hover:underline cursor-pointer"
                     >
                       Reset
                     </button>
@@ -274,7 +291,7 @@ export const TugasPage = () => {
                 </div>
                 <div className="space-y-1 pt-2">
                   {unitOptions.map((unit) => (
-                    <label key={unit} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs text-slate-700 hover:bg-slate-50">
+                    <label key={unit} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs text-slate-700 hover:bg-[#F3F6FB]">
                       <input
                         type="checkbox"
                         checked={selectedUnits.includes(unit)}
@@ -286,7 +303,7 @@ export const TugasPage = () => {
                   ))}
                 </div>
                 <p className="border-t border-slate-100 px-2 pt-2 text-[11px] text-slate-400">
-                  Kosongkan pilihan untuk menampilkan semua unit.
+                  Kosongkan untuk semua unit.
                 </p>
               </div>
             )}
@@ -302,7 +319,7 @@ export const TugasPage = () => {
             onReset={() => setSelectedApplicants([])}
           />
           <CheckboxDropdown
-            label="Pegawai Ditugaskan"
+            label="Pelaksana"
             options={assigneeOptions}
             selected={selectedAssignees}
             isOpen={openFilter === 'assignee'}
@@ -337,35 +354,23 @@ export const TugasPage = () => {
             onChange={(value) => toggleFilterValue(setSelectedStatuses, value)}
             onReset={() => setSelectedStatuses([])}
           />
-
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="mt-2 w-full rounded-lg bg-rose-500 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-rose-600"
-          >
-            Reset Filter
-          </button>
-
         </div>
-        </div>
-      </aside>
+      </section>
 
       <main className="min-w-0">
 
       {/* TAB 1: DAFTAR PROSES AJUAN SURAT TUGAS */}
       {activeTab === 'DAFTAR' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 text-xs font-bold uppercase tracking-wider border-b border-slate-200">
+              <thead className="bg-[#F8FAFD] text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
                 <tr>
-                  <th className="px-6 py-4">Nomor & Perihal Surat</th>
-                  <th className="px-6 py-4">Unit Kerja & Pengaju</th>
-                  <th className="px-6 py-4">Pegawai Ditugaskan</th>
-                  <th className="px-6 py-4">Tanggal & Domisili</th>
-                  <th className="px-6 py-4">Lokasi</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Aksi</th>
+                  <th className="px-5 py-3.5">Surat &amp; Pengaju</th>
+                  <th className="px-5 py-3.5">Pelaksana</th>
+                  <th className="px-5 py-3.5">Jadwal &amp; Lokasi</th>
+                  <th className="px-5 py-3.5">Status &amp; Laporan</th>
+                  <th className="px-5 py-3.5 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -373,51 +378,53 @@ export const TugasPage = () => {
                   const unitColor = UNIT_COLORS[item.unitKerja] || { bg: 'bg-slate-100', text: 'text-slate-800' };
 
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4 min-w-[430px]">
-                        <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 block w-fit mb-1">
-                          {item.nomorSurat}
-                        </span>
-                        <p className="font-semibold text-slate-800 whitespace-nowrap">{item.perihal}</p>
+                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-5 py-4 align-top max-w-sm">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/80">
+                            {item.nomorSurat}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${unitColor.bg} ${unitColor.text}`}>
+                            {item.unitKerja}
+                          </span>
+                        </div>
+                        <p className="font-semibold text-slate-800 line-clamp-2 leading-snug">{item.perihal}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Pengaju: <span className="font-medium text-slate-700">{item.pengaju.nama}</span>
+                          {item.pengaju.nip && item.pengaju.nip !== '-' ? ` • ${item.pengaju.nip}` : ''}
+                        </p>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${unitColor.bg} ${unitColor.text} mb-1`}>
-                          {item.unitKerja}
-                        </span>
-                        <p className="text-xs font-medium text-slate-600">Oleh: {item.pengaju.nama}</p>
-                        <p className="text-[11px] text-slate-500">NIP: {item.pengaju.nip}</p>
-                      </td>
-                      <td className="px-6 py-4 min-w-[170px] align-top">
+                      <td className="px-5 py-4 align-top whitespace-nowrap">
                         {item.pegawaiDitugaskan.length === 1 ? (
-                          <p className="text-xs font-semibold text-slate-800 whitespace-nowrap">
+                          <p className="text-xs font-semibold text-slate-800">
                             {item.pegawaiDitugaskan[0].nama}
                           </p>
                         ) : (
                           <button
                             type="button"
                             onClick={() => setSelectedPegawaiAjuan(item)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 cursor-pointer"
                             aria-label={`Lihat ${item.pegawaiDitugaskan.length} pegawai yang ditugaskan`}
                           >
-                            <Users className="h-3.5 w-3.5" />
+                            <Users className="h-3.5 w-3.5 shrink-0" />
                             {item.pegawaiDitugaskan.length} Pegawai
                           </button>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="text-xs font-semibold text-slate-800">
+                      <td className="px-5 py-4 align-top min-w-[200px]">
+                        <p className="text-xs font-semibold text-slate-800 whitespace-nowrap">
                           {formatRentangTanggal(item.tanggalMulai, item.tanggalSelesai)}
                         </p>
-                        <div className="flex items-center gap-1 text-slate-500 text-xs mt-0.5">
-                          <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                          <span>{formatLokasiKhusus(item.lokasiPenugasan)}</span>
+                        <div className="flex items-start gap-1 text-slate-500 text-xs mt-1">
+                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                          <span className="line-clamp-2">
+                            {item.lokasiSpesifik ? `${item.lokasiSpesifik} • ` : ''}
+                            {formatLokasiKhusus(item.lokasiPenugasan)}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 min-w-[190px] align-top">
-                        <p className="text-xs font-semibold text-slate-800 whitespace-nowrap">{item.lokasiSpesifik || '-'}</p>
-                      </td>
                       <td
-                        className="relative px-6 py-4"
+                        className="relative px-5 py-4 align-top whitespace-nowrap"
                         onMouseLeave={() => setOpenStatusId((current) => current === item.id ? null : current)}
                       >
                         <div className="flex flex-col items-start gap-1.5">
@@ -444,21 +451,21 @@ export const TugasPage = () => {
                           )}
                         </div>
                         {openStatusId === item.id && (
-                          <div className="absolute left-6 top-14 z-20 w-40 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
-                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'SURAT_TERBIT')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
+                          <div className="absolute left-5 top-14 z-20 w-40 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'SURAT_TERBIT')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer">
                               <CheckCircle2 className="w-4 h-4" /> Diapprove
                             </button>
-                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'VERIFIKASI_SUBBAGIAN')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'VERIFIKASI_SUBBAGIAN')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer">
                               <Hourglass className="w-4 h-4" /> Diproses
                             </button>
-                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'DITOLAK')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                            <button type="button" onClick={() => updateStatusAjuan(item.id, 'DITOLAK')} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer">
                               <X className="w-4 h-4" /> Dibatalkan
                             </button>
                           </div>
                         )}
                       </td>
                       <td
-                        className="relative px-6 py-4 text-right"
+                        className="relative px-5 py-4 align-top text-right whitespace-nowrap"
                         onMouseLeave={() => setOpenActionId((current) => current === item.id ? null : current)}
                       >
                         <button
@@ -467,14 +474,14 @@ export const TugasPage = () => {
                             setOpenActionId(openActionId === item.id ? null : item.id);
                             setOpenStatusId(null);
                           }}
-                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-100 p-2 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer"
+                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer"
                           aria-label={`Aksi ajuan ${item.nomorSurat}`}
                           aria-expanded={openActionId === item.id}
                         >
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
                         {openActionId === item.id && (
-                          <div className="absolute right-6 top-14 z-20 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg text-left">
+                          <div className="absolute right-5 top-14 z-20 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg text-left">
                             <button
                               type="button"
                               onClick={() => {
@@ -517,6 +524,13 @@ export const TugasPage = () => {
                     </tr>
                   );
                 })}
+                {filteredAjuan.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">
+                      Belum ada ajuan surat tugas yang sesuai filter saat ini.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

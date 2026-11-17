@@ -9,6 +9,8 @@ import type {
 import { apiService } from '@/api/apiService';
 import { dummyAjuanSuratTugas, dummyPegawaiList, syncDummyPegawaiList } from '@/data/dummyData';
 import { useAuth } from '@/hooks/useAuth';
+import { DEFAULT_STARTER_TEMPLATE_HTML } from '@/utils/docxImport';
+import { downloadFileUrl } from '@/utils/penugasanHelpers';
 
 const TEMPLATE_STORAGE_KEY = 'sim_penugasan_approval_templates';
 
@@ -33,9 +35,13 @@ interface PenugasanContextType {
   updatePegawai: (id: string, updatedData: Partial<Pegawai>) => Promise<PenugasanActionResult<Pegawai>>;
   deletePegawai: (id: string) => Promise<PenugasanActionResult>;
   refreshPegawai: () => Promise<void>;
-  saveTemplate: (tpl: Omit<TemplateSuratResmi, 'id' | 'diperbaruiPada'> & { id?: string }) => TemplateSuratResmi;
-  deleteTemplate: (id: string) => void;
-  toggleTemplateActive: (id: string) => void;
+  saveTemplate: (
+    tpl: Omit<TemplateSuratResmi, 'id' | 'diperbaruiPada'> & { id?: string },
+  ) => Promise<{ data: TemplateSuratResmi; persistedToDb: boolean }>;
+  deleteTemplate: (id: string) => Promise<void>;
+  toggleTemplateActive: (id: string) => Promise<void>;
+  refreshTemplates: () => Promise<void>;
+  downloadTemplateDocx: (tpl: TemplateSuratResmi) => Promise<boolean>;
 }
 
 const isPegawaiMatch = (target: Pegawai | undefined, currentUser: Pegawai | null): boolean => {
@@ -117,11 +123,24 @@ const normalizeTaskList = (rawList: unknown): AjuanSuratTugas[] => {
 
 const normalizeTemplateList = (rawList: unknown): TemplateSuratResmi[] => {
   if (!Array.isArray(rawList)) return [];
-  return rawList.filter((item): item is TemplateSuratResmi => {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
-    const rec = item as Partial<TemplateSuratResmi>;
-    return typeof rec.id === 'string' && typeof rec.namaTemplate === 'string' && typeof rec.kontenHtml === 'string';
-  });
+  return rawList
+    .filter((item): item is TemplateSuratResmi => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+      const rec = item as Partial<TemplateSuratResmi>;
+      return typeof rec.id === 'string' && typeof rec.namaTemplate === 'string' && typeof rec.kontenHtml === 'string';
+    })
+    .map((item) => {
+      const needsCleanHtml =
+        !item.kontenHtml.trim() ||
+        item.kontenHtml.includes('data:image/') ||
+        !item.kontenHtml.includes('{{');
+      return {
+        ...item,
+        hasFileDocx: Boolean(item.hasFileDocx || item.fileDocxDataUrl || item.fileNamaAsli),
+        kontenHtml: needsCleanHtml ? DEFAULT_STARTER_TEMPLATE_HTML : item.kontenHtml,
+        sertakanKopResmi: needsCleanHtml ? true : item.sertakanKopResmi,
+      };
+    });
 };
 
 export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -158,7 +177,15 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const syncTemplates = useCallback((nextTemplates: TemplateSuratResmi[]) => {
     setTemplates(nextTemplates);
     try {
-      localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(nextTemplates));
+      const lightweight = nextTemplates.map((item) => {
+        const copy = {
+          ...item,
+          hasFileDocx: Boolean(item.hasFileDocx || item.fileDocxDataUrl || item.fileNamaAsli),
+        };
+        delete copy.fileDocxDataUrl;
+        return copy;
+      });
+      localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(lightweight));
     } catch {
       // ignore storage errors
     }
@@ -215,10 +242,45 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [syncPegawai]);
 
+  const refreshTemplates = useCallback(async () => {
+    try {
+      const res = await apiService.getTemplates();
+      if (res.success && Array.isArray(res.data)) {
+        const normalized = normalizeTemplateList(res.data);
+        setTemplates((prev) => {
+          const merged = normalized.map((item) => {
+            const existing = prev.find((p) => p.id === item.id);
+            return {
+              ...item,
+              fileDocxDataUrl: item.fileDocxDataUrl || existing?.fileDocxDataUrl,
+              hasFileDocx: Boolean(
+                item.hasFileDocx || item.fileDocxDataUrl || existing?.fileDocxDataUrl || item.fileNamaAsli,
+              ),
+            };
+          });
+          try {
+            const lightweight = merged.map((tpl) => {
+              const copy = { ...tpl };
+              delete copy.fileDocxDataUrl;
+              return copy;
+            });
+            localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(lightweight));
+          } catch {
+            // ignore storage errors
+          }
+          return merged;
+        });
+      }
+    } catch {
+      // fallback to current templates
+    }
+  }, []);
+
   useEffect(() => {
     const syncAll = () => {
       void refreshTasks();
       void refreshPegawai();
+      void refreshTemplates();
     };
     const initialTimer = window.setTimeout(syncAll, 0);
     // Polling interval 3 detik untuk sinkronisasi realtime lintas tab/role
@@ -227,7 +289,7 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       window.clearTimeout(initialTimer);
       window.clearInterval(interval);
     };
-  }, [refreshTasks, refreshPegawai]);
+  }, [refreshTasks, refreshPegawai, refreshTemplates]);
 
   const createTask = async (newTaskData: Partial<AjuanSuratTugas>): Promise<AjuanSuratTugas> => {
     setIsLoading(true);
@@ -535,7 +597,9 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const saveTemplate = useCallback(
-    (tpl: Omit<TemplateSuratResmi, 'id' | 'diperbaruiPada'> & { id?: string }): TemplateSuratResmi => {
+    async (
+      tpl: Omit<TemplateSuratResmi, 'id' | 'diperbaruiPada'> & { id?: string },
+    ): Promise<{ data: TemplateSuratResmi; persistedToDb: boolean }> => {
       const nowStr = new Date().toLocaleString('id-ID', {
         day: '2-digit',
         month: 'short',
@@ -553,7 +617,16 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             diperbaruiPada: nowStr,
           };
           syncTemplates(templates.map((item) => (item.id === existing.id ? updated : item)));
-          return updated;
+          const res = await apiService.updateTemplate(existing.id, updated);
+          if (res.success && res.data) {
+            return { data: res.data, persistedToDb: true };
+          }
+          // Jika belum ada di DB (misalnya baru dibuat offline sebelumnya), coba create
+          const createRes = await apiService.createTemplate(updated);
+          return {
+            data: createRes.success && createRes.data ? createRes.data : updated,
+            persistedToDb: createRes.success,
+          };
         }
       }
       const created: TemplateSuratResmi = {
@@ -562,25 +635,53 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         diperbaruiPada: nowStr,
       };
       syncTemplates([created, ...templates]);
-      return created;
+      const res = await apiService.createTemplate(created);
+      return {
+        data: res.success && res.data ? res.data : created,
+        persistedToDb: res.success,
+      };
     },
     [templates, syncTemplates],
   );
 
   const deleteTemplate = useCallback(
-    (id: string) => {
+    async (id: string) => {
       syncTemplates(templates.filter((item) => item.id !== id));
+      await apiService.deleteTemplate(id);
     },
     [templates, syncTemplates],
   );
 
   const toggleTemplateActive = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      const target = templates.find((item) => item.id === id);
+      if (!target) return;
+      const nextAktif = !target.aktif;
       syncTemplates(
-        templates.map((item) => (item.id === id ? { ...item, aktif: !item.aktif } : item)),
+        templates.map((item) => (item.id === id ? { ...item, aktif: nextAktif } : item)),
       );
+      await apiService.updateTemplate(id, { aktif: nextAktif });
     },
     [templates, syncTemplates],
+  );
+
+  const downloadTemplateDocx = useCallback(
+    async (tpl: TemplateSuratResmi): Promise<boolean> => {
+      const fileName = tpl.fileNamaAsli || `${tpl.namaTemplate}.docx`;
+      if (tpl.fileDocxDataUrl) {
+        return downloadFileUrl(tpl.fileDocxDataUrl, fileName);
+      }
+      const res = await apiService.getTemplateById(tpl.id);
+      if (res.success && res.data?.fileDocxDataUrl) {
+        const fetchedUrl = res.data.fileDocxDataUrl;
+        setTemplates((prev) =>
+          prev.map((item) => (item.id === tpl.id ? { ...item, fileDocxDataUrl: fetchedUrl, hasFileDocx: true } : item)),
+        );
+        return downloadFileUrl(fetchedUrl, fileName);
+      }
+      return false;
+    },
+    [],
   );
 
   const myTasks = useMemo(() => {
@@ -611,6 +712,8 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         saveTemplate,
         deleteTemplate,
         toggleTemplateActive,
+        refreshTemplates,
+        downloadTemplateDocx,
       }}
     >
       {children}

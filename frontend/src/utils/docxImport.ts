@@ -6,6 +6,35 @@ import type {
 } from '@/types';
 import { resolveKategoriTemplate } from '@/utils/penugasanHelpers';
 
+export const DEFAULT_STARTER_TEMPLATE_HTML = `<div style="text-align:center;margin:18px 0 22px 0;">
+  <div style="font-size:14pt;font-weight:700;letter-spacing:1px;text-transform:uppercase;">SURAT TUGAS</div>
+  <div style="font-size:11pt;margin-top:4px;">Nomor {{NOMOR_SURAT}}</div>
+</div>
+<div style="text-align:justify;line-height:1.65;margin-bottom:10px;">
+  Kepala Balai Besar Pengembangan Penjaminan Mutu Pendidikan Vokasi Bidang Mesin dan Teknik Industri (BBPPMPV BMTI) menugasi
+</div>
+<div>{{TABEL_PEGAWAI}}</div>
+<div style="text-align:justify;line-height:1.65;margin-bottom:12px;">
+  sebagai {{PERIHAL}}. Kegiatan akan diselenggarakan pada tanggal {{TANGGAL}} di {{LOKASI}}. {{DASAR_SURAT}}
+</div>
+<div style="text-align:justify;line-height:1.65;margin-bottom:14px;">
+  {{BIAYA}}
+</div>
+<div style="text-align:justify;line-height:1.65;margin-bottom:28px;">
+  Surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab dan yang bersangkutan diharapkan membuat laporan.
+</div>
+<table class="spt-layout-table" width="100%" style="width:100%;border-collapse:collapse;margin-top:24px;">
+  <tr>
+    <td width="58%" style="width:58%;">&nbsp;</td>
+    <td width="42%" style="width:42%;text-align:left;line-height:1.5;">
+      <div>{{TANGGAL}}</div>
+      <div style="margin-top:2px;">Kepala,</div>
+      <div style="height:55px;">&nbsp;</div>
+      <div style="font-weight:700;">{{NAMA_KEPALA}}</div>
+    </td>
+  </tr>
+</table>`;
+
 const escapeHtml = (value?: string): string => {
   if (!value) return '';
   return value

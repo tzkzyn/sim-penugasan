@@ -160,58 +160,65 @@ const GenericTaskTable = ({
 }) => (
   <div className="overflow-x-auto">
     <table className="w-full text-left text-sm">
-      <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
+      <thead className="bg-[#F8FAFD] text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
         <tr>
-          <th className="px-6 py-4 font-semibold">Nomor Surat</th>
-          <th className="px-6 py-4 font-semibold">Perihal</th>
-          <th className="px-6 py-4 font-semibold">Tanggal Mulai</th>
-          <th className="px-6 py-4 font-semibold">Tanggal Berakhir</th>
-          <th className="px-6 py-4 font-semibold">Pegawai Ditugaskan</th>
-          <th className="px-6 py-4 font-semibold">Status</th>
-          <th className="px-6 py-4 font-semibold">Laporan Pegawai</th>
-          <th className="px-6 py-4 font-semibold text-center">Aksi</th>
+          <th className="px-5 py-3.5">Nomor &amp; Perihal</th>
+          <th className="px-5 py-3.5">Jadwal Pelaksanaan</th>
+          <th className="px-5 py-3.5">Pegawai Ditugaskan</th>
+          <th className="px-5 py-3.5">Status &amp; Laporan</th>
+          <th className="px-5 py-3.5 text-right">Aksi</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-slate-200">
+      <tbody className="divide-y divide-slate-100">
         {tasks.map((t) => {
           const uploaded = hasLaporan(t);
           return (
-            <tr key={t.id} className="hover:bg-slate-50 transition">
-              <td className="px-6 py-4 font-medium text-slate-800">{t.nomorSurat}</td>
-              <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={t.perihal}>
-                {t.perihal}
+            <tr key={t.id} className="hover:bg-slate-50/70 transition">
+              <td className="px-5 py-4 align-top max-w-sm">
+                <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/80 inline-block mb-1">
+                  {t.nomorSurat}
+                </span>
+                <p className="font-semibold text-slate-800 line-clamp-2 leading-snug" title={t.perihal}>
+                  {t.perihal}
+                </p>
               </td>
-              <td className="px-6 py-4 text-slate-600">{formatDate(t.tanggalMulai)}</td>
-              <td className="px-6 py-4 text-slate-600">{formatDate(t.tanggalSelesai)}</td>
-              <td className="px-6 py-4">
+              <td className="px-5 py-4 align-top text-xs text-slate-600 whitespace-nowrap">
+                <p className="font-semibold text-slate-800">
+                  {formatDate(t.tanggalMulai)}
+                </p>
+                <p className="text-slate-400 mt-0.5">
+                  s/d {formatDate(t.tanggalSelesai)}
+                </p>
+              </td>
+              <td className="px-5 py-4 align-top">
                 <PegawaiTooltip pegawaiList={t.pegawaiDitugaskan} />
               </td>
-              <td className="px-6 py-4">
-                <StatusBadge status={t.status} />
-              </td>
-              <td className="px-6 py-4">
-                {uploaded ? (
-                  <div className="inline-flex flex-col gap-0.5">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 w-fit">
-                      <CheckCircle2 className="h-3 w-3" /> Berkas Lengkap
-                    </span>
-                    {t.fileLaporanNama && (
-                      <span
-                        className="max-w-[160px] truncate text-[11px] text-slate-500"
-                        title={t.fileLaporanNama}
-                      >
-                        {t.fileLaporanNama}
+              <td className="px-5 py-4 align-top">
+                <div className="flex flex-col items-start gap-1.5">
+                  <StatusBadge status={t.status} />
+                  {uploaded ? (
+                    <div className="inline-flex flex-col gap-0.5">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 w-fit">
+                        <CheckCircle2 className="h-3 w-3" /> Berkas Lengkap
                       </span>
-                    )}
-                  </div>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
-                    <Clock className="h-3 w-3" /> Belum Diunggah
-                  </span>
-                )}
+                      {t.fileLaporanNama && (
+                        <span
+                          className="max-w-[160px] truncate text-[11px] text-slate-500"
+                          title={t.fileLaporanNama}
+                        >
+                          {t.fileLaporanNama}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                      <Clock className="h-3 w-3" /> Belum Diunggah
+                    </span>
+                  )}
+                </div>
               </td>
-              <td className="px-6 py-4 text-center">
-                <div className="flex items-center justify-center gap-2">
+              <td className="px-5 py-4 align-top text-right whitespace-nowrap">
+                <div className="flex items-center justify-end gap-2">
                   {uploaded && (
                     <button
                       type="button"
@@ -219,7 +226,7 @@ const GenericTaskTable = ({
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold transition cursor-pointer"
                       title="Unduh berkas laporan pegawai"
                     >
-                      <Download className="w-3.5 h-3.5" /> Unduh Laporan
+                      <Download className="w-3.5 h-3.5" /> Unduh
                     </button>
                   )}
                   {onPrint && (
@@ -239,7 +246,7 @@ const GenericTaskTable = ({
         })}
         {tasks.length === 0 && (
           <tr>
-            <td colSpan={8} className="px-6 py-8 text-center text-slate-500">
+            <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
               {emptyMsg}
             </td>
           </tr>
@@ -609,18 +616,28 @@ export const TugasPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-bold text-slate-800">Manajemen Penugasan</h1>
+    <div className="p-2 sm:p-4 space-y-5 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)]">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center shrink-0">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Manajemen Penugasan</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Pantau rekap, progres pelaksanaan, dan berkas laporan surat tugas.
+            </p>
+          </div>
+        </div>
         <button
           onClick={() => navigate('/admin/tugas/buat')}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1D4ED8] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 hover:bg-[#1E40AF] transition cursor-pointer shrink-0"
         >
-          Buat Tugas Baru
+          + Buat Tugas Baru
         </button>
       </div>
       
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mt-6">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)]">
         {renderContent()}
       </div>
 
