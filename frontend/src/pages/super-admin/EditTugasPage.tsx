@@ -1,9 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePenugasan } from '@/context/PenugasanContext';
 import { dummyPegawaiList } from '@/data/dummyData';
-import type { UnitKerjaType, StatusSuratTugas } from '@/types';
+import type { AjuanSuratTugas, UnitKerjaType, StatusSuratTugas } from '@/types';
 import { FileEdit, ArrowLeft, Save, Trash2, Calendar, MapPin, Users, CheckCircle2, ShieldCheck } from 'lucide-react';
+
+const buildEditFormState = (task?: AjuanSuratTugas) => ({
+  nomorSurat: task?.nomorSurat || '',
+  perihal: task?.perihal || '',
+  unitKerja: (task?.unitKerja || 'RBI') as UnitKerjaType,
+  status: (task?.status || 'DRAFT') as StatusSuratTugas,
+  tanggalMulai: task?.tanggalMulai || '',
+  tanggalSelesai: task?.tanggalSelesai || '',
+  lokasiPenugasan: task?.lokasiPenugasan || '',
+  lokasiSpesifik: task?.lokasiSpesifik || '',
+  deskripsi: task?.deskripsi || '',
+  pegawaiIds: task ? task.pegawaiDitugaskan.map((p) => p.id) : ([] as string[]),
+});
 
 export const EditTugasPage = () => {
   const navigate = useNavigate();
@@ -18,38 +31,17 @@ export const EditTugasPage = () => {
 
   const currentTask = tasks.find((t) => t.id === selectedTaskId);
 
-  const [formData, setFormData] = useState({
-    nomorSurat: '',
-    perihal: '',
-    unitKerja: 'RBI' as UnitKerjaType,
-    status: 'DRAFT' as StatusSuratTugas,
-    tanggalMulai: '',
-    tanggalSelesai: '',
-    lokasiPenugasan: '',
-    lokasiSpesifik: '',
-    deskripsi: '',
-    pegawaiIds: [] as string[],
-  });
-
+  const [formData, setFormData] = useState(() => buildEditFormState(currentTask));
   const [isSaved, setIsSaved] = useState(false);
 
-  useEffect(() => {
-    if (currentTask) {
-      setFormData({
-        nomorSurat: currentTask.nomorSurat,
-        perihal: currentTask.perihal,
-        unitKerja: currentTask.unitKerja as UnitKerjaType,
-        status: currentTask.status as StatusSuratTugas,
-        tanggalMulai: currentTask.tanggalMulai,
-        tanggalSelesai: currentTask.tanggalSelesai,
-        lokasiPenugasan: currentTask.lokasiPenugasan,
-        lokasiSpesifik: currentTask.lokasiSpesifik || '',
-        deskripsi: currentTask.deskripsi || '',
-        pegawaiIds: currentTask.pegawaiDitugaskan.map((p) => p.id),
-      });
+  const handleSelectTask = (nextId: string) => {
+    setSelectedTaskId(nextId);
+    const nextTask = tasks.find((t) => t.id === nextId);
+    if (nextTask) {
+      setFormData(buildEditFormState(nextTask));
       setIsSaved(false);
     }
-  }, [currentTask]);
+  };
 
   const handlePegawaiToggle = (id: string) => {
     setFormData((prev) => {
@@ -156,7 +148,7 @@ export const EditTugasPage = () => {
         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Tugas yang Diedit:</label>
         <select
           value={selectedTaskId}
-          onChange={(e) => setSelectedTaskId(e.target.value)}
+          onChange={(e) => handleSelectTask(e.target.value)}
           className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 max-w-md"
         >
           {tasks.map((t) => (

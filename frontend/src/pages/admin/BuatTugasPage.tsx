@@ -11,14 +11,16 @@ import {
   DEFAULT_JAM_MULAI,
   DEFAULT_JAM_SELESAI,
   detectScheduleConflicts,
-  getPegawaiDinasStats,
   readFileAsDataUrl,
   resolveKategoriTemplate,
   validateDocumentFile,
 } from '@/utils/penugasanHelpers';
 import { sendEmailNotification } from '@/utils/emailService';
-import { FileText, Send, ArrowLeft, FileEdit, ChevronDown, AlertTriangle } from 'lucide-react';
-import { A4WordEditorCanvas } from '@/components/ui/CetakSuratTugasModal';
+import { FileText, Send, ArrowLeft, AlertTriangle } from 'lucide-react';
+import {
+  AdminBuatTugasPreviewColumn,
+  AdminPegawaiPickerDropdown,
+} from '@/components/admin/AdminBuatTugasSections';
 
 type Wilayah = { id: string; name: string };
 
@@ -318,115 +320,27 @@ export const BuatTugasPage = () => {
                 </select>
               </div>
 
-              <div className="relative">
-                <label className="block text-xs font-bold text-slate-700 mb-1">Pegawai Ditugaskan</label>
-                <button
-                  type="button"
-                  onClick={() => setIsPegawaiDropdownOpen((prev) => !prev)}
-                  aria-expanded={isPegawaiDropdownOpen}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-blue-400 px-3 py-2 text-sm text-slate-700 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
-                >
-                  <span className="truncate">
-                    {formData.pegawaiIds.length === 0
-                      ? 'Pilih Pegawai'
-                      : formData.pegawaiIds.length === 1
-                        ? pegawaiList.find((p) => p.id === formData.pegawaiIds[0])?.nama || '1 Pegawai Dipilih'
-                        : `${formData.pegawaiIds.length} Pegawai Dipilih`}
-                  </span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isPegawaiDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isPegawaiDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsPegawaiDropdownOpen(false)} />
-                    <div className="absolute right-0 left-0 sm:left-auto sm:min-w-[340px] z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
-                      <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-2 text-xs">
-                        <span className="font-bold text-slate-700">Pilih Pegawai ({formData.pegawaiIds.length})</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                pegawaiIds: pegawaiList.map((p) => p.id),
-                                kategoriTemplate: resolveKategoriTemplate(pegawaiList.length),
-                              }))
-                            }
-                            className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
-                          >
-                            Pilih Semua
-                          </button>
-                          {formData.pegawaiIds.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setFormData((prev) => ({ ...prev, pegawaiIds: [] }))}
-                              className="text-[11px] font-semibold text-rose-600 hover:underline cursor-pointer"
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-1 pt-2">
-                        {pegawaiList.map((p) => {
-                          const isSelected = formData.pegawaiIds.includes(p.id);
-                          const pStats = getPegawaiDinasStats(
-                            p,
-                            allTasks,
-                            formData.tanggalMulai || undefined,
-                          );
-                          const pConflicts = detectScheduleConflicts(
-                            {
-                              tanggalMulai: formData.tanggalMulai,
-                              tanggalSelesai: formData.tanggalSelesai || formData.tanggalMulai,
-                              jamMulai: formData.jamMulai,
-                              jamSelesai: formData.jamSelesai,
-                              pegawaiDitugaskan: [p],
-                            },
-                            allTasks,
-                          );
-                          const hasConflict = pConflicts.length > 0;
-                          return (
-                            <label
-                              key={p.id}
-                              className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2 py-2 text-xs transition-colors ${
-                                hasConflict
-                                  ? 'bg-rose-50 border border-rose-200 text-rose-900'
-                                  : isSelected
-                                    ? 'bg-blue-50/70 text-blue-900 font-semibold'
-                                    : 'text-slate-700 hover:bg-slate-50'
-                              }`}
-                            >
-                              <div className="flex items-start gap-2 min-w-0">
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => toggleFormPegawai(p.id)}
-                                  className="h-4 w-4 mt-0.5 shrink-0 rounded border-slate-300 accent-blue-600 focus:ring-blue-500"
-                                />
-                                <div className="min-w-0">
-                                  <p className="truncate font-semibold">{p.nama}</p>
-                                  <p className="text-[10px] text-slate-500">
-                                    Dinas: {pStats.totalDinas}x (Mgg: {pStats.dinasMingguIni}x &bull; Bln: {pStats.dinasBulanIni}x)
-                                  </p>
-                                  {hasConflict && (
-                                    <p className="text-[10px] font-bold text-rose-700">
-                                      Bentrok dgn {pConflicts[0].conflictingTask.nomorSurat}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                                {p.unitKerja}
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+              <AdminPegawaiPickerDropdown
+                pegawaiList={pegawaiList}
+                selectedIds={formData.pegawaiIds}
+                allTasks={allTasks}
+                tanggalMulai={formData.tanggalMulai}
+                tanggalSelesai={formData.tanggalSelesai}
+                jamMulai={formData.jamMulai}
+                jamSelesai={formData.jamSelesai}
+                isOpen={isPegawaiDropdownOpen}
+                onToggleOpen={() => setIsPegawaiDropdownOpen((prev) => !prev)}
+                onClose={() => setIsPegawaiDropdownOpen(false)}
+                onSelectAll={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    pegawaiIds: pegawaiList.map((p) => p.id),
+                    kategoriTemplate: resolveKategoriTemplate(pegawaiList.length),
+                  }))
+                }
+                onReset={() => setFormData((prev) => ({ ...prev, pegawaiIds: [] }))}
+                onTogglePegawai={toggleFormPegawai}
+              />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -612,73 +526,43 @@ export const BuatTugasPage = () => {
         </div>
 
         {/* KOLOM KANAN: LEMBAR KERJA KERTAS A4 HIDUP ALA WORD */}
-        <div className="lg:col-span-7 print:col-span-12">
-          <div className={formData.docMode === 'editor' ? 'block' : 'hidden'}>
-            <A4WordEditorCanvas
-              data={{
-                id: 'ADMIN-DRAFT-NEW',
-                nomorSurat: formData.nomorSurat,
-                perihal: formData.perihal,
-                unitKerja: formData.unitKerja,
-                kategoriTemplate: formData.kategoriTemplate,
-                tanggalMulai: formData.tanggalMulai,
-                tanggalSelesai: formData.tanggalSelesai,
-                jamMulai: formData.jamMulai,
-                jamSelesai: formData.jamSelesai,
-                lokasiPenugasan: previewLokasi,
-                lokasiSpesifik: formData.lokasiSpesifik,
-                deskripsi: formData.deskripsi,
-                pengaju: currentAdmin,
-                pegawaiDitugaskan:
-                  previewAssignedPegawai.length > 0
-                    ? previewAssignedPegawai
-                    : pegawaiList[0]
-                      ? [pegawaiList[0]]
-                      : [],
-                ttdUserPng: formData.ttdUserPng || undefined,
-                ttdUserSignerName: formData.ttdUserSignerName || undefined,
-                ttdUserSignedAt: formData.ttdUserSignedAt || undefined,
-              }}
-              autoSyncFromData={true}
-              defaultSignatureRole="user"
-              maxHeightClass="max-h-[75vh]"
-              showSyncButton={true}
-              onChangeHtml={(html) => setFormData((prev) => ({ ...prev, dokumenDraftText: html }))}
-              onSignatureChange={(sig) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  ttdUserPng: sig.png,
-                  ttdUserSignerName: sig.name || currentAdmin.nama,
-                  ttdUserSignedAt: sig.signedAt.toLocaleString('id-ID', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }),
-                }))
-              }
-            />
-          </div>
-          {formData.docMode !== 'editor' && (
-            <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
-              <FileText className="h-12 w-12 text-slate-400 mb-3" />
-              <h4 className="text-sm font-bold text-slate-800">Mode Unggah Berkas Eksternal</h4>
-              <p className="text-xs text-slate-500 max-w-sm mt-1">
-                {formData.file
-                  ? `Berkas siap dikirim: ${formData.file.name}`
-                  : 'Pilih berkas PDF/Word/Excel di kolom formulir sebelah kiri, atau beralih ke Editor Kertas A4 untuk mengetik surat langsung di web.'}
-              </p>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, docMode: 'editor' })}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition cursor-pointer"
-              >
-                <FileEdit className="w-3.5 h-3.5" /> Gunakan Editor Kertas A4
-              </button>
-            </div>
-          )}
-        </div>
+        <AdminBuatTugasPreviewColumn
+          docMode={formData.docMode}
+          file={formData.file}
+          nomorSurat={formData.nomorSurat}
+          perihal={formData.perihal}
+          unitKerja={formData.unitKerja}
+          kategoriTemplate={formData.kategoriTemplate}
+          tanggalMulai={formData.tanggalMulai}
+          tanggalSelesai={formData.tanggalSelesai}
+          jamMulai={formData.jamMulai}
+          jamSelesai={formData.jamSelesai}
+          previewLokasi={previewLokasi}
+          lokasiSpesifik={formData.lokasiSpesifik}
+          deskripsi={formData.deskripsi}
+          currentAdmin={currentAdmin}
+          previewAssignedPegawai={previewAssignedPegawai}
+          fallbackPegawai={pegawaiList[0]}
+          ttdUserPng={formData.ttdUserPng}
+          ttdUserSignerName={formData.ttdUserSignerName}
+          ttdUserSignedAt={formData.ttdUserSignedAt}
+          onChangeHtml={(html) => setFormData((prev) => ({ ...prev, dokumenDraftText: html }))}
+          onSignatureChange={(sig) =>
+            setFormData((prev) => ({
+              ...prev,
+              ttdUserPng: sig.png,
+              ttdUserSignerName: sig.name || currentAdmin.nama,
+              ttdUserSignedAt: sig.signedAt.toLocaleString('id-ID', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+            }))
+          }
+          onSwitchToEditor={() => setFormData({ ...formData, docMode: 'editor' })}
+        />
       </div>
     </div>
   );

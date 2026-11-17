@@ -70,8 +70,15 @@ kp-26-sim-penugasan/
 │   │   │   ├── apiService.ts       # Integrasi pemanggilan endpoint backend
 │   │   │   └── axiosInstance.ts    # Konfigurasi dasar Axios
 │   │   ├── components/
-│   │   │   └── ui/
-│   │   │       └── CetakSuratTugasModal.tsx  # Modal cetak naskah resmi SPT
+│   │   │   ├── admin/              # Sub-komponen, form, tab & modal khusus Admin
+│   │   │   ├── approval/           # Modal konfirmasi & editor template khusus Approval
+│   │   │   ├── super-admin/        # Modal penugasan & ajuan khusus Super Admin
+│   │   │   ├── user/               # Navbar/sidebar User, modal draft ajuan & tab presensi
+│   │   │   ├── penugasan/          # Komponen penugasan bersama (filter pemetaan, dll.)
+│   │   │   ├── calendar/           # Kalender penugasan
+│   │   │   ├── map/                # Peta sebaran penugasan (Leaflet)
+│   │   │   └── ui/                 # Komponen UI bersama (A4WordEditorCanvas, CetakSuratTugasModal, SignaturePad, DashboardAjuanDetailModal)
+│   │   ├── utils/                  # Helper murni (suratHtmlHelpers, signaturePadHelpers, penugasanNormalizers, userDraftAjuanHelpers, docxImport/Export)
 │   │   ├── context/
 │   │   │   ├── AuthContext.tsx      # Otentikasi & Penyimpanan role pengguna
 │   │   │   └── PenugasanContext.tsx # State terpusat penugasan & workflow

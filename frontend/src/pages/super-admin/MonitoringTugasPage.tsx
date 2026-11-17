@@ -45,14 +45,14 @@ export const MonitoringTugasPage = () => {
     return { total, active, pending, draft };
   }, [tasks]);
 
+  const [nowMs] = useState(() => Date.now());
   const calculateProgress = (task: typeof tasks[0]) => {
     if (task.status === 'SURAT_TERBIT') {
       const start = new Date(task.tanggalMulai).getTime();
       const end = new Date(task.tanggalSelesai).getTime();
-      const now = Date.now();
-      if (now <= start) return 20;
-      if (now >= end) return 100;
-      const pct = Math.round(((now - start) / (end - start)) * 100);
+      if (nowMs <= start) return 20;
+      if (nowMs >= end) return 100;
+      const pct = Math.round(((nowMs - start) / (end - start)) * 100);
       return Math.min(Math.max(pct, 25), 90);
     }
     if (task.status === 'PERSETUJUAN_PIMPINAN') return 60;

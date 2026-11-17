@@ -76,7 +76,7 @@ export const RekapPenugasanPage = () => {
         }))
       );
     return entries;
-  }, [tahun, bulan]);
+  }, [tasks, tahun, bulan]);
 
   // Filter entries by jenis dinas
   const filteredEntries = useMemo(() => {

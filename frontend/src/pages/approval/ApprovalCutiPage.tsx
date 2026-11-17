@@ -13,7 +13,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import type { PresensiItem } from '@/types';
+import type { PresensiItem, UnitKerjaType } from '@/types';
 
 export interface PengajuanCutiItem {
   id: string | number;
@@ -54,7 +54,8 @@ export const ApprovalCutiPage = () => {
         const raw = JSON.parse(saved);
         if (Array.isArray(raw)) {
           return raw.filter(
-            (r: any) => r.id !== 101 && !r.alasan?.includes('Keperluan Keluarga')
+            (r: { id?: string | number; alasan?: string }) =>
+              r.id !== 101 && !r.alasan?.includes('Keperluan Keluarga')
           );
         }
       }
@@ -77,7 +78,8 @@ export const ApprovalCutiPage = () => {
         const raw = JSON.parse(saved);
         if (Array.isArray(raw)) {
           const cleaned = raw.filter(
-            (r: any) => r.id !== 101 && !r.alasan?.includes('Keperluan Keluarga')
+            (r: { id?: string | number; alasan?: string }) =>
+              r.id !== 101 && !r.alasan?.includes('Keperluan Keluarga')
           );
           setPengajuanList(cleaned);
         }
@@ -88,11 +90,12 @@ export const ApprovalCutiPage = () => {
   };
 
   useEffect(() => {
-    loadData();
+    const initTimer = window.setTimeout(loadData, 0);
     const handleStorageChange = () => loadData();
     window.addEventListener('storage', handleStorageChange);
     const interval = setInterval(loadData, 2500);
     return () => {
+      window.clearTimeout(initTimer);
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
     };
@@ -119,7 +122,7 @@ export const ApprovalCutiPage = () => {
         pegawaiId: String(item.nip || item.id),
         nama: item.nama,
         nip: item.nip,
-        unitKerja: (item.unitKerja || 'RBI') as any,
+        unitKerja: (item.unitKerja || 'RBI') as UnitKerjaType,
         tanggal: item.mulai,
         jamMasuk: '-',
         lokasiPresensiMasuk: item.jenis === 'DINAS_LUAR' ? 'Lokasi Penugasan Luar' : 'Izin / Cuti Resmi',
@@ -337,15 +340,15 @@ export const ApprovalCutiPage = () => {
         </div>
 
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
-          {[
+          {([
             { key: 'ALL', label: 'Semua' },
             { key: 'MENUNGGU', label: 'Menunggu' },
             { key: 'DISETUJUI', label: 'Disetujui' },
             { key: 'DITOLAK', label: 'Ditolak' },
-          ].map((tab) => (
+          ] as const).map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setFilterStatus(tab.key as any)}
+              onClick={() => setFilterStatus(tab.key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 filterStatus === tab.key ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}

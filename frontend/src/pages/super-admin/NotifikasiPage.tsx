@@ -98,16 +98,16 @@ export const NotifikasiPage = () => {
         <div className="flex items-center gap-1 text-xs font-semibold text-slate-500 px-2 py-1">
           <Filter className="h-3.5 w-3.5" /> Filter:
         </div>
-        {[
+        {([
           { key: 'ALL', label: 'Semua' },
           { key: 'AKUN', label: 'Manajemen Akun' },
           { key: 'TUGAS', label: 'Penugasan' },
           { key: 'ABSENSI', label: 'Absensi' },
           { key: 'SISTEM', label: 'Audit Sistem' },
-        ].map((tab) => (
+        ] as const).map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveFilter(tab.key as any)}
+            onClick={() => setActiveFilter(tab.key)}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
               activeFilter === tab.key
                 ? 'bg-purple-600 text-white shadow-xs'
