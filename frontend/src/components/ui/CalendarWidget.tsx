@@ -27,18 +27,18 @@ export const CalendarWidget = ({ selectedDate, onSelectDate }: CalendarWidgetPro
       <div className="flex justify-between items-center mb-4">
         <button
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+          className="w-8 h-8 flex items-center justify-center bg-[#EEF3FB] hover:bg-blue-100 rounded-full text-[#1E40AF] transition-colors cursor-pointer"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-4 h-4" />
         </button>
         <h2 className="text-sm font-bold text-slate-800">
           {format(currentMonth, 'MMMM yyyy', { locale: id })}
         </h2>
         <button
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-          className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+          className="w-8 h-8 flex items-center justify-center bg-[#EEF3FB] hover:bg-blue-100 rounded-full text-[#1E40AF] transition-colors cursor-pointer"
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-4 h-4" />
         </button>
       </div>
     );
@@ -85,11 +85,11 @@ export const CalendarWidget = ({ selectedDate, onSelectDate }: CalendarWidgetPro
             className={`flex justify-center items-center p-1 cursor-pointer`}
           >
             <span
-              className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-medium transition-all
+              className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all
                 ${!isCurrentMonth ? 'text-slate-300' : ''}
-                ${isSelected ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : ''}
-                ${!isSelected && isToday ? 'bg-blue-50 text-blue-700 font-bold' : ''}
-                ${!isSelected && !isToday && isCurrentMonth ? 'text-slate-700 hover:bg-slate-100' : ''}
+                ${isSelected ? 'bg-[#34C38F] text-white shadow-md shadow-emerald-200' : ''}
+                ${!isSelected && isToday ? 'bg-[#F5BD2C]/20 text-amber-800 font-bold ring-1 ring-[#F5BD2C]' : ''}
+                ${!isSelected && !isToday && isCurrentMonth ? 'text-slate-700 hover:bg-[#EEF3FB] hover:text-[#1E40AF]' : ''}
               `}
             >
               {formattedDate}
@@ -109,7 +109,7 @@ export const CalendarWidget = ({ selectedDate, onSelectDate }: CalendarWidgetPro
   };
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-slate-300 p-5 shadow-sm h-full flex flex-col">
+    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] h-full flex flex-col">
       {renderHeader()}
       {renderDays()}
       {renderCells()}

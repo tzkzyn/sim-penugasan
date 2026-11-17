@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePenugasan } from '@/context/PenugasanContext';
+import type { AjuanSuratTugas } from '@/types';
+import { CetakSuratTugasModal } from '@/components/ui/CetakSuratTugasModal';
 import {
   History,
   CheckCircle2,
@@ -17,6 +19,7 @@ export const RiwayatApprovalPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDecision, setFilterDecision] = useState<'ALL' | 'SURAT_TERBIT' | 'DITOLAK'>('ALL');
   const [selectedUnit, setSelectedUnit] = useState<string>('ALL');
+  const [selectedSuratForA4, setSelectedSuratForA4] = useState<AjuanSuratTugas | null>(null);
 
   // Ambil data riwayat (SURAT_TERBIT atau DITOLAK)
   const historyData = tasks.filter(
@@ -27,9 +30,9 @@ export const RiwayatApprovalPage = () => {
 
   const filteredHistory = historyData.filter((item) => {
     const matchSearch =
-      item.nomorSurat.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.perihal.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.lokasiPenugasan.toLowerCase().includes(searchTerm.toLowerCase());
+      (item.nomorSurat || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.perihal || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.lokasiPenugasan || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     if (!matchSearch) return false;
     if (filterDecision !== 'ALL' && item.status !== filterDecision) return false;
@@ -166,10 +169,10 @@ export const RiwayatApprovalPage = () => {
 
               <div className="shrink-0 self-end md:self-center">
                 <button
-                  onClick={() => alert(`Membuka rincian arsip surat: ${item.nomorSurat}`)}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                  onClick={() => setSelectedSuratForA4(item)}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors cursor-pointer"
                 >
-                  Lihat Dokumen
+                  Lihat &amp; Cetak Kertas A4
                 </button>
               </div>
             </div>
@@ -181,6 +184,13 @@ export const RiwayatApprovalPage = () => {
           </div>
         )}
       </div>
+
+      <CetakSuratTugasModal
+        surat={selectedSuratForA4}
+        isOpen={Boolean(selectedSuratForA4)}
+        onClose={() => setSelectedSuratForA4(null)}
+        showApprovalActions={true}
+      />
     </div>
   );
 };

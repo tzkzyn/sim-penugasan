@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, ChevronDown } from 'lucide-react';
 import { dummyPegawaiList } from '@/data/dummyData';
 import type { AjuanSuratTugas, UnitKerjaType } from '@/types';
 
@@ -24,10 +24,11 @@ export const DraftAjuanModal = ({ isOpen, onClose, onSubmit, nextNumber }: Draft
   const [provinces, setProvinces] = useState<Wilayah[]>([]);
   const [cities, setCities] = useState<Wilayah[]>([]);
   const [regionError, setRegionError] = useState('');
+  const [isPegawaiDropdownOpen, setIsPegawaiDropdownOpen] = useState(false);
   const [formData, setFormData] = useState({
     perihal: '',
     unitKerja: 'RBI' as UnitKerjaType,
-    pegawaiId: dummyPegawaiList[0].id,
+    pegawaiIds: [dummyPegawaiList[0].id],
     provinceId: '',
     cityId: '',
     lokasiSpesifik: '',
@@ -35,6 +36,16 @@ export const DraftAjuanModal = ({ isOpen, onClose, onSubmit, nextNumber }: Draft
     tanggalSelesai: tomorrow,
     deskripsi: '',
   });
+
+  const togglePegawai = (id: string) => {
+    setFormData((prev) => {
+      const exists = prev.pegawaiIds.includes(id);
+      return {
+        ...prev,
+        pegawaiIds: exists ? prev.pegawaiIds.filter((item) => item !== id) : [...prev.pegawaiIds, id],
+      };
+    });
+  };
 
   useEffect(() => {
     if (!isOpen || provinces.length > 0) return;
@@ -76,7 +87,8 @@ export const DraftAjuanModal = ({ isOpen, onClose, onSubmit, nextNumber }: Draft
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    const assignedPegawai = dummyPegawaiList.find((pegawai) => pegawai.id === formData.pegawaiId) ?? dummyPegawaiList[0];
+    const assignedPegawai = dummyPegawaiList.filter((pegawai) => formData.pegawaiIds.includes(pegawai.id));
+    if (assignedPegawai.length === 0) assignedPegawai.push(dummyPegawaiList[0]);
     const province = provinces.find((item) => item.id === formData.provinceId);
     const city = cities.find((item) => item.id === formData.cityId);
     if (!province || !city) {
@@ -84,12 +96,13 @@ export const DraftAjuanModal = ({ isOpen, onClose, onSubmit, nextNumber }: Draft
       return;
     }
 
+    setIsPegawaiDropdownOpen(false);
     onSubmit({
       id: `draft-${Date.now()}`,
       nomorSurat: `DRAFT-ST/${formData.unitKerja}/2026/${nextNumber}`,
       perihal: formData.perihal,
       pengaju: dummyPegawaiList[0],
-      pegawaiDitugaskan: [assignedPegawai],
+      pegawaiDitugaskan: assignedPegawai,
       unitKerja: formData.unitKerja,
       tanggalMulai: formData.tanggalMulai,
       tanggalSelesai: formData.tanggalSelesai,
@@ -118,7 +131,79 @@ export const DraftAjuanModal = ({ isOpen, onClose, onSubmit, nextNumber }: Draft
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-2 text-sm text-slate-700"><span>Perihal Ajuan</span><input required value={formData.perihal} onChange={(event) => setFormData({ ...formData, perihal: event.target.value })} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200" /></label>
           <label className="space-y-2 text-sm text-slate-700"><span>Unit Kerja</span><select value={formData.unitKerja} onChange={(event) => setFormData({ ...formData, unitKerja: event.target.value as UnitKerjaType })} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200">{(['RBI', 'Fastingkom', 'Kepeg', 'PM'] as UnitKerjaType[]).map((unit) => <option key={unit}>{unit}</option>)}</select></label>
-          <label className="space-y-2 text-sm text-slate-700"><span>Pegawai Ditugaskan</span><select value={formData.pegawaiId} onChange={(event) => setFormData({ ...formData, pegawaiId: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200">{dummyPegawaiList.map((pegawai) => <option key={pegawai.id} value={pegawai.id}>{pegawai.nama}</option>)}</select></label>
+          <div className="relative space-y-2 text-sm text-slate-700">
+            <span className="block">Pegawai Ditugaskan</span>
+            <button
+              type="button"
+              onClick={() => setIsPegawaiDropdownOpen((prev) => !prev)}
+              aria-expanded={isPegawaiDropdownOpen}
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-slate-700 outline-none transition-colors hover:border-blue-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 cursor-pointer"
+            >
+              <span className="truncate">
+                {formData.pegawaiIds.length === 0
+                  ? 'Pilih Pegawai'
+                  : formData.pegawaiIds.length === 1
+                    ? dummyPegawaiList.find((p) => p.id === formData.pegawaiIds[0])?.nama || '1 Pegawai Dipilih'
+                    : `${formData.pegawaiIds.length} Pegawai Dipilih`}
+              </span>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isPegawaiDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isPegawaiDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsPegawaiDropdownOpen(false)} />
+                <div className="absolute left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-2 text-xs">
+                    <span className="font-bold text-slate-700">Pilih Pegawai ({formData.pegawaiIds.length})</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, pegawaiIds: dummyPegawaiList.map((p) => p.id) }))}
+                        className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        Pilih Semua
+                      </button>
+                      {formData.pegawaiIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, pegawaiIds: [] }))}
+                          className="text-[11px] font-semibold text-rose-600 hover:underline cursor-pointer"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-1 pt-2">
+                    {dummyPegawaiList.map((pegawai) => {
+                      const isSelected = formData.pegawaiIds.includes(pegawai.id);
+                      return (
+                        <label
+                          key={pegawai.id}
+                          className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2 py-2 text-xs transition-colors ${
+                            isSelected ? 'bg-blue-50/70 text-blue-900 font-semibold' : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => togglePegawai(pegawai.id)}
+                              className="h-4 w-4 shrink-0 rounded border-slate-300 accent-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="truncate">{pegawai.nama}</span>
+                          </div>
+                          <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                            {pegawai.unitKerja}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           <label className="space-y-2 text-sm text-slate-700"><span>Lokasi/Tempat Penugasan</span><input required placeholder="Contoh: Kantor Kecamatan Bandung Tengah" value={formData.lokasiSpesifik} onChange={(event) => setFormData({ ...formData, lokasiSpesifik: event.target.value })} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200" /></label>
         </div>
 

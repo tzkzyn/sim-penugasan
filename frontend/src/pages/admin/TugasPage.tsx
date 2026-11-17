@@ -1,11 +1,43 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePenugasan } from '@/context/PenugasanContext';
-import { dummyPegawaiList } from '@/data/dummyData';
-import { FileText, Calendar, Activity, ChevronDown, Printer } from 'lucide-react';
+import type { AjuanSuratTugas, Pegawai } from '@/types';
+import {
+  FileText,
+  Calendar,
+  Activity,
+  ChevronDown,
+  Printer,
+  Download,
+  CheckCircle2,
+  Clock,
+} from 'lucide-react';
 import { CetakSuratTugasModal } from '@/components/ui/CetakSuratTugasModal';
 import { format, isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
+
+const hasLaporan = (task: AjuanSuratTugas): boolean =>
+  Boolean(task.fileLaporanUrl || task.fileDraftUrl);
+
+const downloadLaporanTugas = (task: AjuanSuratTugas) => {
+  const fileUrl = task.fileLaporanUrl || task.fileDraftUrl;
+  if (!fileUrl) return;
+  const isSafeUrl =
+    fileUrl.startsWith('data:') ||
+    fileUrl.startsWith('blob:') ||
+    fileUrl.startsWith('https://') ||
+    fileUrl.startsWith('http://') ||
+    fileUrl.startsWith('/');
+  if (!isSafeUrl) return;
+  const safeNomor = (task.nomorSurat || task.id).replace(/[^a-zA-Z0-9._-]/g, '_');
+  const fileName = task.fileLaporanNama || `Laporan_${safeNomor}.pdf`;
+  const link = document.createElement('a');
+  link.href = fileUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 // Utility for formatting date
 const formatDate = (dateStr: string) => format(new Date(dateStr), 'dd MMMM yyyy', { locale: id });
@@ -29,9 +61,9 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 // 1. Pegawai Penugasan (Tabel Pegawai dan Tugas Aktifnya)
 const PegawaiPenugasanTab = () => {
-  const { tasks } = usePenugasan();
+  const { tasks, pegawaiList } = usePenugasan();
   const activeTasks = tasks.filter(t => t.status === 'SURAT_TERBIT' || t.status === 'PERSETUJUAN_PIMPINAN');
-  const pegawaiWithTasks = dummyPegawaiList.map(pegawai => {
+  const pegawaiWithTasks = pegawaiList.map(pegawai => {
     const pTasks = activeTasks.filter(t => t.pegawaiDitugaskan.some(p => p.id === pegawai.id));
     return { ...pegawai, activeTasks: pTasks };
   }).filter(p => p.activeTasks.length > 0);
@@ -76,7 +108,7 @@ const PegawaiPenugasanTab = () => {
 };
 
 // Tooltip component untuk daftar pegawai (Tampilan Awan)
-const PegawaiTooltip = ({ pegawaiList }: { pegawaiList: typeof dummyPegawaiList }) => {
+const PegawaiTooltip = ({ pegawaiList }: { pegawaiList: Pegawai[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   
   if (!pegawaiList || pegawaiList.length === 0) return <span className="text-slate-400">-</span>;
@@ -117,7 +149,15 @@ const PegawaiTooltip = ({ pegawaiList }: { pegawaiList: typeof dummyPegawaiList 
 };
 
 // Generic Table Component for tasks
-const GenericTaskTable = ({ tasks, emptyMsg, onPrint }: { tasks: any[], emptyMsg: string, onPrint?: (task: any) => void }) => (
+const GenericTaskTable = ({
+  tasks,
+  emptyMsg,
+  onPrint,
+}: {
+  tasks: AjuanSuratTugas[];
+  emptyMsg: string;
+  onPrint?: (task: AjuanSuratTugas) => void;
+}) => (
   <div className="overflow-x-auto">
     <table className="w-full text-left text-sm">
       <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
@@ -128,44 +168,97 @@ const GenericTaskTable = ({ tasks, emptyMsg, onPrint }: { tasks: any[], emptyMsg
           <th className="px-6 py-4 font-semibold">Tanggal Berakhir</th>
           <th className="px-6 py-4 font-semibold">Pegawai Ditugaskan</th>
           <th className="px-6 py-4 font-semibold">Status</th>
+          <th className="px-6 py-4 font-semibold">Laporan Pegawai</th>
           <th className="px-6 py-4 font-semibold text-center">Aksi</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-200">
-        {tasks.map(t => (
-          <tr key={t.id} className="hover:bg-slate-50 transition">
-            <td className="px-6 py-4 font-medium text-slate-800">{t.nomorSurat}</td>
-            <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={t.perihal}>{t.perihal}</td>
-            <td className="px-6 py-4 text-slate-600">{formatDate(t.tanggalMulai)}</td>
-            <td className="px-6 py-4 text-slate-600">{formatDate(t.tanggalSelesai)}</td>
-            <td className="px-6 py-4"><PegawaiTooltip pegawaiList={t.pegawaiDitugaskan} /></td>
-            <td className="px-6 py-4"><StatusBadge status={t.status} /></td>
-            <td className="px-6 py-4 text-center">
-              {onPrint && (
-                <button
-                  type="button"
-                  onClick={() => onPrint(t)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition cursor-pointer"
-                  title="Cetak Surat Perintah Tugas"
-                >
-                  <Printer className="w-3.5 h-3.5" /> Cetak
-                </button>
-              )}
+        {tasks.map((t) => {
+          const uploaded = hasLaporan(t);
+          return (
+            <tr key={t.id} className="hover:bg-slate-50 transition">
+              <td className="px-6 py-4 font-medium text-slate-800">{t.nomorSurat}</td>
+              <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={t.perihal}>
+                {t.perihal}
+              </td>
+              <td className="px-6 py-4 text-slate-600">{formatDate(t.tanggalMulai)}</td>
+              <td className="px-6 py-4 text-slate-600">{formatDate(t.tanggalSelesai)}</td>
+              <td className="px-6 py-4">
+                <PegawaiTooltip pegawaiList={t.pegawaiDitugaskan} />
+              </td>
+              <td className="px-6 py-4">
+                <StatusBadge status={t.status} />
+              </td>
+              <td className="px-6 py-4">
+                {uploaded ? (
+                  <div className="inline-flex flex-col gap-0.5">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 w-fit">
+                      <CheckCircle2 className="h-3 w-3" /> Berkas Lengkap
+                    </span>
+                    {t.fileLaporanNama && (
+                      <span
+                        className="max-w-[160px] truncate text-[11px] text-slate-500"
+                        title={t.fileLaporanNama}
+                      >
+                        {t.fileLaporanNama}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+                    <Clock className="h-3 w-3" /> Belum Diunggah
+                  </span>
+                )}
+              </td>
+              <td className="px-6 py-4 text-center">
+                <div className="flex items-center justify-center gap-2">
+                  {uploaded && (
+                    <button
+                      type="button"
+                      onClick={() => downloadLaporanTugas(t)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold transition cursor-pointer"
+                      title="Unduh berkas laporan pegawai"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Unduh Laporan
+                    </button>
+                  )}
+                  {onPrint && (
+                    <button
+                      type="button"
+                      onClick={() => onPrint(t)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition cursor-pointer"
+                      title="Cetak Surat Perintah Tugas"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Cetak
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          );
+        })}
+        {tasks.length === 0 && (
+          <tr>
+            <td colSpan={8} className="px-6 py-8 text-center text-slate-500">
+              {emptyMsg}
             </td>
           </tr>
-        ))}
-        {tasks.length === 0 && <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-500">{emptyMsg}</td></tr>}
+        )}
       </tbody>
     </table>
   </div>
 );
 
 // 2. Laporan Penugasan (SURAT_TERBIT)
-const LaporanPenugasanTab = () => {
-  const { tasks } = usePenugasan();
+const LaporanPenugasanTab = ({
+  onPrint,
+}: {
+  onPrint?: (task: AjuanSuratTugas) => void;
+}) => {
+  const { tasks, pegawaiList } = usePenugasan();
   const [expandedPegawaiId, setExpandedPegawaiId] = useState<string | null>(null);
 
-  const pegawaiWithTasks = dummyPegawaiList.map(pegawai => {
+  const pegawaiWithTasks = pegawaiList.map(pegawai => {
     // Collect all tasks for this employee
     const pTasks = tasks.filter(t => t.pegawaiDitugaskan.some(p => p.id === pegawai.id));
     return { ...pegawai, allTasks: pTasks };
@@ -221,7 +314,7 @@ const LaporanPenugasanTab = () => {
                         <div className="px-5 py-3 border-b border-slate-200 bg-white flex justify-between items-center">
                           <h4 className="font-bold text-slate-700">Rincian Penugasan: {p.nama}</h4>
                         </div>
-                        <GenericTaskTable tasks={p.allTasks} emptyMsg="Belum ada penugasan." />
+                        <GenericTaskTable tasks={p.allTasks} emptyMsg="Belum ada penugasan." onPrint={onPrint} />
                       </div>
                     </div>
                   </td>
@@ -347,7 +440,7 @@ const PivotPenugasanTab = () => {
 };
 
 // 5. Penugasan Berlangsung
-const PenugasanBerlangsungTab = ({ onPrint }: { onPrint?: (t: any) => void }) => {
+const PenugasanBerlangsungTab = ({ onPrint }: { onPrint?: (t: AjuanSuratTugas) => void }) => {
   const { tasks } = usePenugasan();
   const [filter, setFilter] = useState<'ALL' | 'TODAY' | 'WEEK' | 'MONTH'>('ALL');
 
@@ -384,19 +477,19 @@ const PenugasanBerlangsungTab = ({ onPrint }: { onPrint?: (t: any) => void }) =>
 };
 
 // 6. Draft Penugasan
-const DraftPenugasanTab = ({ onPrint }: { onPrint?: (t: any) => void }) => {
+const DraftPenugasanTab = ({ onPrint }: { onPrint?: (t: AjuanSuratTugas) => void }) => {
   const { tasks } = usePenugasan();
   return <GenericTaskTable tasks={tasks.filter(t => t.status === 'DRAFT')} emptyMsg="Tidak ada draft penugasan." onPrint={onPrint} />;
 };
 
 // 7. Blokir Penugasan (Ditolak)
-const BlokirPenugasanTab = ({ onPrint }: { onPrint?: (t: any) => void }) => {
+const BlokirPenugasanTab = ({ onPrint }: { onPrint?: (t: AjuanSuratTugas) => void }) => {
   const { tasks } = usePenugasan();
   return <GenericTaskTable tasks={tasks.filter(t => t.status === 'DITOLAK')} emptyMsg="Tidak ada penugasan yang diblokir atau ditolak." onPrint={onPrint} />;
 };
 
 // 8. Rekap Penugasan (Dashboard)
-const RekapPenugasanTab = ({ onPrint }: { onPrint?: (t: any) => void }) => {
+const RekapPenugasanTab = ({ onPrint }: { onPrint?: (t: AjuanSuratTugas) => void }) => {
   const { tasks } = usePenugasan();
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState<string>(String(currentDate.getMonth() + 1));
@@ -494,18 +587,16 @@ const RekapPenugasanTab = ({ onPrint }: { onPrint?: (t: any) => void }) => {
 };
 
 
-import { useSearchParams } from 'react-router-dom';
-
 export const TugasPage = () => {
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'rekap';
-  const [suratToPrint, setSuratToPrint] = useState<any>(null);
+  const [suratToPrint, setSuratToPrint] = useState<AjuanSuratTugas | null>(null);
 
   const renderContent = () => {
     switch (activeTab) {
       case 'rekap': return <RekapPenugasanTab onPrint={setSuratToPrint} />;
       case 'pegawai': return <PegawaiPenugasanTab />;
-      case 'laporan': return <LaporanPenugasanTab />;
+      case 'laporan': return <LaporanPenugasanTab onPrint={setSuratToPrint} />;
       case 'periode': return <PeriodePenugasanTab />;
       case 'pivot': return <PivotPenugasanTab />;
       case 'berlangsung': return <PenugasanBerlangsungTab onPrint={setSuratToPrint} />;

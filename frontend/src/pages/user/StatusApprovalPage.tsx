@@ -3,12 +3,16 @@ import { usePenugasan } from '@/context/PenugasanContext';
 import { CheckCircle2, Clock, XCircle, MapPin, Calendar } from 'lucide-react';
 
 export const StatusApprovalPage = () => {
-  const { tasks } = usePenugasan();
+  const { myTasks: tasks } = usePenugasan();
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
 
   const ajuanList = tasks.filter((item) => {
     if (filter === 'PENDING')
-      return item.status === 'VERIFIKASI_SUBBAGIAN' || item.status === 'PERSETUJUAN_PIMPINAN';
+      return (
+        item.status === 'DRAFT' ||
+        item.status === 'VERIFIKASI_SUBBAGIAN' ||
+        item.status === 'PERSETUJUAN_PIMPINAN'
+      );
     if (filter === 'APPROVED') return item.status === 'SURAT_TERBIT';
     if (filter === 'REJECTED') return item.status === 'DITOLAK';
     return true;
@@ -43,7 +47,9 @@ export const StatusApprovalPage = () => {
       <div className="space-y-4">
         {ajuanList.map((item) => {
           const isPending =
-            item.status === 'VERIFIKASI_SUBBAGIAN' || item.status === 'PERSETUJUAN_PIMPINAN';
+            item.status === 'DRAFT' ||
+            item.status === 'VERIFIKASI_SUBBAGIAN' ||
+            item.status === 'PERSETUJUAN_PIMPINAN';
           const isApproved = item.status === 'SURAT_TERBIT';
           const isRejected = item.status === 'DITOLAK';
 

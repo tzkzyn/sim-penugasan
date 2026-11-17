@@ -6,8 +6,9 @@ import type {
   LokasiPenugasanPegawai,
 } from '@/types';
 
-// Data Akun Pegawai (Mencakup seluruh unit: RBI, Fastingkom, Kepegawaian, PM)
-export const dummyPegawaiList: Pegawai[] = [
+export const PEGAWAI_STORAGE_KEY = 'sim_penugasan_pegawai_list';
+
+export const DEFAULT_PEGAWAI_LIST: Pegawai[] = [
   {
     id: 'peg-01',
     nama: 'Taryadi',
@@ -18,6 +19,8 @@ export const dummyPegawaiList: Pegawai[] = [
     telepon: '081234567890',
     email: 'taryadi@pemda.go.id',
     fotoAvatar: `${import.meta.env.BASE_URL}pp-navbar-2.jpg`,
+    username: 'taryadi',
+    password: 'password123',
     role: 'SUPER_ADMIN',
   },
   {
@@ -30,6 +33,8 @@ export const dummyPegawaiList: Pegawai[] = [
     telepon: '081234567891',
     email: 'admin@pemda.go.id',
     fotoAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
+    username: 'admin',
+    password: 'password123',
     role: 'ADMIN',
   },
   {
@@ -42,6 +47,8 @@ export const dummyPegawaiList: Pegawai[] = [
     telepon: '081322334455',
     email: 'anita.purnamasari@pemda.go.id',
     fotoAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150',
+    username: 'anita.purnamasari',
+    password: 'password123',
     role: 'APPROVAL',
   },
   {
@@ -54,6 +61,8 @@ export const dummyPegawaiList: Pegawai[] = [
     telepon: '081298765432',
     email: 'mulyadi@pemda.go.id',
     fotoAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150',
+    username: 'mulyadi',
+    password: 'password123',
     role: 'APPROVAL',
   },
   {
@@ -66,6 +75,8 @@ export const dummyPegawaiList: Pegawai[] = [
     telepon: '081211223344',
     email: 'rahmat.hidayat@pemda.go.id',
     fotoAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150',
+    username: 'rahmat.hidayat',
+    password: 'password123',
     role: 'ADMIN',
   },
   {
@@ -78,6 +89,8 @@ export const dummyPegawaiList: Pegawai[] = [
     telepon: '081399887766',
     email: 'siti.nurhaliza@pemda.go.id',
     fotoAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150',
+    username: 'siti.nurhaliza',
+    password: 'password123',
     role: 'USER',
   },
   {
@@ -90,6 +103,8 @@ export const dummyPegawaiList: Pegawai[] = [
     telepon: '081244556677',
     email: 'budi.santoso@pemda.go.id',
     fotoAvatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=150',
+    username: 'budi.santoso',
+    password: 'password123',
     role: 'USER',
   },
   {
@@ -102,9 +117,49 @@ export const dummyPegawaiList: Pegawai[] = [
     telepon: '081355667788',
     email: 'pegawai@pemda.go.id',
     fotoAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
+    username: 'pegawai',
+    password: 'password123',
     role: 'USER',
   },
 ];
+
+const loadInitialPegawaiList = (): Pegawai[] => {
+  if (typeof window === 'undefined') return [...DEFAULT_PEGAWAI_LIST];
+  try {
+    const saved = window.localStorage.getItem(PEGAWAI_STORAGE_KEY);
+    if (saved) {
+      const parsed: unknown = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const valid = parsed.filter(
+          (item): item is Pegawai =>
+            !!item &&
+            typeof item === 'object' &&
+            typeof (item as Pegawai).id === 'string' &&
+            typeof (item as Pegawai).nama === 'string' &&
+            typeof (item as Pegawai).nip === 'string',
+        );
+        if (valid.length > 0) return valid;
+      }
+    }
+  } catch {
+    // fallback ke data awal
+  }
+  return [...DEFAULT_PEGAWAI_LIST];
+};
+
+// Data Akun Pegawai (Mencakup seluruh unit: RBI, Fastingkom, Kepegawaian, PM)
+export const dummyPegawaiList: Pegawai[] = loadInitialPegawaiList();
+
+export const syncDummyPegawaiList = (nextList: Pegawai[]): void => {
+  dummyPegawaiList.splice(0, dummyPegawaiList.length, ...nextList);
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(PEGAWAI_STORAGE_KEY, JSON.stringify(nextList));
+    } catch {
+      // abaikan storage penuh/terkunci
+    }
+  }
+};
 
 // Data Sampel Ajuan Surat Tugas (Dikosongkan - Siap diinput dari form)
 export const dummyAjuanSuratTugas: AjuanSuratTugas[] = [];

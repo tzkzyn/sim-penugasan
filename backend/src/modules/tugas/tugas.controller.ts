@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  NotFoundException,
+} from '@nestjs/common';
+import { type PegawaiEntity } from '../../prisma.service';
 import { TugasService } from './tugas.service';
 
 @Controller('tugas')
@@ -16,7 +26,7 @@ export class TugasController {
   }
 
   @Post()
-  createTugas(@Body() body: any) {
+  createTugas(@Body() body: Record<string, unknown>) {
     return this.tugasService.create(body);
   }
 
@@ -26,12 +36,46 @@ export class TugasController {
   }
 
   @Patch(':id')
-  updateTugas(@Param('id') id: string, @Body() body: any) {
+  updateTugas(@Param('id') id: string, @Body() body: Record<string, unknown>) {
     return this.tugasService.update(id, body);
   }
 
   @Delete(':id')
   deleteTugas(@Param('id') id: string) {
     return this.tugasService.delete(id);
+  }
+}
+
+@Controller('pegawai')
+export class PegawaiController {
+  constructor(private readonly tugasService: TugasService) {}
+
+  @Get()
+  getPegawai() {
+    return this.tugasService.findAllPegawai();
+  }
+
+  @Get(':id')
+  async getPegawaiById(@Param('id') id: string) {
+    const found = await this.tugasService.findOnePegawai(id);
+    if (!found) {
+      throw new NotFoundException('Data pegawai tidak ditemukan.');
+    }
+    return found;
+  }
+
+  @Post()
+  createPegawai(@Body() body: Partial<PegawaiEntity>) {
+    return this.tugasService.createPegawai(body);
+  }
+
+  @Patch(':id')
+  updatePegawai(@Param('id') id: string, @Body() body: Partial<PegawaiEntity>) {
+    return this.tugasService.updatePegawai(id, body);
+  }
+
+  @Delete(':id')
+  deletePegawai(@Param('id') id: string) {
+    return this.tugasService.deletePegawai(id);
   }
 }

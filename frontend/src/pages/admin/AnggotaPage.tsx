@@ -1,22 +1,24 @@
 import { useState } from 'react';
 import { Search, MoreHorizontal, ChevronDown } from 'lucide-react';
-import { dummyPegawaiList, UNIT_COLORS } from '@/data/dummyData';
+import { UNIT_COLORS } from '@/data/dummyData';
+import { usePenugasan } from '@/context/PenugasanContext';
 
 export const AnggotaPage = () => {
+  const { pegawaiList } = usePenugasan();
   const [searchTerm, setSearchTerm] = useState('');
   const [unitFilter, setUnitFilter] = useState('Semua Unit Kerja');
   const [roleFilter, setRoleFilter] = useState('Semua Role');
   const [jabatanFilter, setJabatanFilter] = useState('Semua Jabatan');
 
   // Filter logic
-  const filteredPegawai = dummyPegawaiList.filter((pegawai) => {
-    const matchesSearch = 
-      pegawai.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredPegawai = pegawaiList.filter((pegawai) => {
+    const matchesSearch =
+      pegawai.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pegawai.nip.includes(searchTerm);
     const matchesUnit = unitFilter === 'Semua Unit Kerja' || pegawai.unitKerja === unitFilter;
     const matchesRole = roleFilter === 'Semua Role' || pegawai.role === roleFilter;
     const matchesJabatan = jabatanFilter === 'Semua Jabatan' || pegawai.jabatan === jabatanFilter;
-    
+
     return matchesSearch && matchesUnit && matchesRole && matchesJabatan;
   });
 
@@ -30,23 +32,23 @@ export const AnggotaPage = () => {
 
       {/* Main Card */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        
+
         {/* Toolbar */}
         <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-4 items-center bg-white">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Cari berdasarkan nama atau NIP..." 
+            <input
+              type="text"
+              placeholder="Cari berdasarkan nama atau NIP..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
           </div>
-          
+
           <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <div className="relative min-w-[170px] flex-1 md:flex-none">
-              <select 
+              <select
                 value={unitFilter}
                 onChange={(e) => setUnitFilter(e.target.value)}
                 className="w-full appearance-none px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
@@ -61,30 +63,31 @@ export const AnggotaPage = () => {
             </div>
 
             <div className="relative min-w-[150px] flex-1 md:flex-none">
-              <select 
+              <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
                 className="w-full appearance-none px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
               >
                 <option>Semua Role</option>
                 <option>SUPER_ADMIN</option>
+                <option>ADMIN</option>
+                <option>APPROVAL</option>
+                <option>USER</option>
                 <option>PEGAWAI</option>
               </select>
               <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             </div>
 
             <div className="relative min-w-[180px] flex-1 md:flex-none">
-              <select 
+              <select
                 value={jabatanFilter}
                 onChange={(e) => setJabatanFilter(e.target.value)}
                 className="w-full appearance-none px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
               >
                 <option>Semua Jabatan</option>
-                <option>Super Admin</option>
-                <option>Front Office</option>
-                <option>Koordinator Pengawasan Lalu Lintas</option>
-                <option>Kasi Penertiban & Operasional</option>
-                <option>Subkoordinator Pemeliharaan Jalan</option>
+                {Array.from(new Set(pegawaiList.map((p) => p.jabatan).filter(Boolean))).map((j) => (
+                  <option key={j}>{j}</option>
+                ))}
               </select>
               <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             </div>
@@ -106,20 +109,25 @@ export const AnggotaPage = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredPegawai.length > 0 ? (
                 filteredPegawai.map((pegawai) => {
-                  // Wait, actually I will just use UNIT_COLORS for uniqueness if they prefer,
-                  // but the image shows mostly blue for all of them. Let's use UNIT_COLORS if available, fallback to blue.
                   const colorCode = UNIT_COLORS[pegawai.unitKerja];
                   const finalUnitClasses = colorCode ? `${colorCode.bg} ${colorCode.text}` : 'bg-blue-50 text-blue-600';
 
-                  const roleBg = pegawai.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-50 text-emerald-600';
+                  const roleBg =
+                    pegawai.role === 'SUPER_ADMIN'
+                      ? 'bg-purple-100 text-purple-700'
+                      : pegawai.role === 'ADMIN'
+                        ? 'bg-indigo-100 text-indigo-700'
+                        : pegawai.role === 'APPROVAL'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-emerald-50 text-emerald-600';
 
                   return (
                     <tr key={pegawai.id} className="hover:bg-slate-50/50 transition-colors group bg-white">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
-                          <img 
-                            src={pegawai.fotoAvatar} 
-                            alt={pegawai.nama} 
+                          <img
+                            src={pegawai.fotoAvatar || `${import.meta.env.BASE_URL}pp-navbar-2.jpg`}
+                            alt={pegawai.nama}
                             className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm bg-white"
                           />
                           <div>
@@ -131,7 +139,7 @@ export const AnggotaPage = () => {
                       <td className="px-6 py-4">
                         <div>
                           <div className="font-medium text-slate-600 text-[14px]">{pegawai.jabatan}</div>
-                          <div className="text-[13px] text-slate-400 mt-0.5">{pegawai.email}</div>
+                          <div className="text-[13px] text-slate-400 mt-0.5">{pegawai.email || '-'}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -141,7 +149,7 @@ export const AnggotaPage = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${roleBg}`}>
-                          {pegawai.role}
+                          {pegawai.role || 'USER'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">

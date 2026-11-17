@@ -16,6 +16,7 @@ export interface Pegawai {
   fotoAvatar?: string;
   email?: string;
   username?: string;
+  password?: string;
   role?: 'SUPER_ADMIN' | 'ADMIN' | 'PEGAWAI' | 'APPROVAL' | 'USER';
 }
 
@@ -36,6 +37,8 @@ export type StatusSuratTugas =
   | 'SURAT_TERBIT'
   | 'DITOLAK';
 
+export type KategoriTemplateSurat = 'INDIVIDU' | 'BERDUA' | 'KELOMPOK';
+
 // Ajuan Surat Tugas & Draft Penugasan
 export interface AjuanSuratTugas {
   id: string;
@@ -44,15 +47,40 @@ export interface AjuanSuratTugas {
   pengaju: Pegawai;
   pegawaiDitugaskan: Pegawai[];
   unitKerja: UnitKerjaType;
+  kategoriTemplate?: KategoriTemplateSurat;
   tanggalMulai: string;
   tanggalSelesai: string;
+  jamMulai?: string;
+  jamSelesai?: string;
   lokasiPenugasan: string;
   koordinat: [number, number]; // [latitude, longitude]
   lokasiSpesifik?: string;
   deskripsi: string;
   status: StatusSuratTugas;
   fileDraftUrl?: string;
+  fileDraftNama?: string;
+  filePerbaikanUrl?: string;
+  filePerbaikanNama?: string;
+  fileLaporanUrl?: string;
+  fileLaporanNama?: string;
+  catatanLaporan?: string;
+  tanggalLaporan?: string;
+  alasanPenolakan?: string;
   dokumenDraftText?: string;
+  dasarSuratDari?: string;
+  dasarSuratNomor?: string;
+  dasarSuratTanggal?: string;
+  sumberBiaya?: 'PENYELENGGARA' | 'DIPA' | 'LAINNYA';
+  namaKepala?: string;
+  ttdDigitalPng?: string;
+  ttdSignerName?: string;
+  ttdSignedAt?: string;
+  ttdUserPng?: string;
+  ttdUserSignerName?: string;
+  ttdUserSignedAt?: string;
+  ttdApprovalPng?: string;
+  ttdApprovalSignerName?: string;
+  ttdApprovalSignedAt?: string;
   workflow: WorkflowStep[];
 }
 
@@ -121,4 +149,36 @@ export interface LokasiPenugasanPegawai {
   tanggalSelesai: string;
   status: 'AKTIF' | 'MENDATANG' | 'SELESAI';
   markerType?: 'approvedAjuan';
+}
+
+export interface TemplatePrefillData {
+  nomorSurat?: string;
+  perihal?: string;
+  namaPegawai?: string;
+  nip?: string;
+  pangkatGolongan?: string;
+  jabatan?: string;
+  tanggalMulai?: string;
+  tanggalSelesai?: string;
+  lokasiPenugasan?: string;
+  lokasiSpesifik?: string;
+  dasarSuratDari?: string;
+  dasarSuratNomor?: string;
+  dasarSuratTanggal?: string;
+  sumberBiaya?: 'PENYELENGGARA' | 'DIPA' | 'LAINNYA';
+  namaKepala?: string;
+}
+
+export interface TemplateSuratResmi {
+  id: string;
+  namaTemplate: string;
+  deskripsi?: string;
+  kategoriTemplate: KategoriTemplateSurat;
+  fileNamaAsli?: string;
+  kontenHtml: string;
+  sertakanKopResmi: boolean;
+  prefillData?: TemplatePrefillData;
+  dibuatOleh: string;
+  diperbaruiPada: string;
+  aktif: boolean;
 }

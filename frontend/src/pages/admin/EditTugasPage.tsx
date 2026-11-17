@@ -1,186 +1,283 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePenugasan } from '@/context/PenugasanContext';
-import { dummyPegawaiList } from '@/data/dummyData';
-import type { UnitKerjaType, StatusSuratTugas } from '@/types';
-import { FileEdit, ArrowLeft, Save, Trash2, Calendar, MapPin, Users, CheckCircle2 } from 'lucide-react';
+import type {
+  AjuanSuratTugas,
+  KategoriTemplateSurat,
+  Pegawai,
+  StatusSuratTugas,
+  UnitKerjaType,
+  WorkflowStep,
+} from '@/types';
+import {
+  DEFAULT_JAM_MULAI,
+  DEFAULT_JAM_SELESAI,
+  detectScheduleConflicts,
+  downloadFileUrl,
+  getPegawaiDinasStats,
+  readFileAsDataUrl,
+  resolveKategoriTemplate,
+  validateDocumentFile,
+} from '@/utils/penugasanHelpers';
+import {
+  FileEdit,
+  ArrowLeft,
+  Save,
+  Trash2,
+  Calendar,
+  MapPin,
+  Users,
+  CheckCircle2,
+  AlertTriangle,
+  Upload,
+  Download,
+  Send,
+  Clock,
+} from 'lucide-react';
 
-export const EditTugasPage = () => {
+interface EditTugasFormContentProps {
+  currentTask: AjuanSuratTugas;
+  allTasks: AjuanSuratTugas[];
+  pegawaiList: Pegawai[];
+  onSaveTask: (id: string, updatedData: Partial<AjuanSuratTugas>) => Promise<void>;
+  onDeleteTask: (id: string) => Promise<void>;
+}
+
+const EditTugasFormContent = ({
+  currentTask,
+  allTasks,
+  pegawaiList,
+  onSaveTask,
+  onDeleteTask,
+}: EditTugasFormContentProps) => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const queryId = searchParams.get('id');
-  const { tasks, updateTask, deleteTask } = usePenugasan();
 
-  const [selectedTaskId, setSelectedTaskId] = useState<string>(() => {
-    if (queryId && tasks.some((t) => t.id === queryId)) return queryId;
-    return tasks[0]?.id || '';
+  const initialPegawaiIds = currentTask.pegawaiDitugaskan.map((p) => {
+    const found = pegawaiList.find(
+      (item) => item.id === p.id || (p.nip && item.nip === p.nip) || item.nama === p.nama,
+    );
+    return found ? found.id : p.id;
   });
-
-  const currentTask = tasks.find((t) => t.id === selectedTaskId);
 
   const [formData, setFormData] = useState({
-    nomorSurat: '',
-    perihal: '',
-    unitKerja: 'RBI' as UnitKerjaType,
-    status: 'DRAFT' as StatusSuratTugas,
-    tanggalMulai: '',
-    tanggalSelesai: '',
-    lokasiPenugasan: '',
-    lokasiSpesifik: '',
-    deskripsi: '',
-    pegawaiIds: [] as string[],
+    nomorSurat: currentTask.nomorSurat,
+    perihal: currentTask.perihal,
+    unitKerja: currentTask.unitKerja as UnitKerjaType,
+    kategoriTemplate: (currentTask.kategoriTemplate ??
+      resolveKategoriTemplate(currentTask.pegawaiDitugaskan.length)) as KategoriTemplateSurat,
+    status: currentTask.status as StatusSuratTugas,
+    tanggalMulai: currentTask.tanggalMulai,
+    tanggalSelesai: currentTask.tanggalSelesai,
+    jamMulai: currentTask.jamMulai || DEFAULT_JAM_MULAI,
+    jamSelesai: currentTask.jamSelesai || DEFAULT_JAM_SELESAI,
+    lokasiPenugasan: currentTask.lokasiPenugasan,
+    lokasiSpesifik: currentTask.lokasiSpesifik || '',
+    deskripsi: currentTask.deskripsi || '',
+    pegawaiIds: initialPegawaiIds,
+    filePerbaikan: null as File | null,
   });
 
-  const [isSaved, setIsSaved] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [savedNotice, setSavedNotice] = useState('');
 
-  useEffect(() => {
-    if (currentTask) {
-      setFormData({
-        nomorSurat: currentTask.nomorSurat,
-        perihal: currentTask.perihal,
-        unitKerja: currentTask.unitKerja as UnitKerjaType,
-        status: currentTask.status as StatusSuratTugas,
-        tanggalMulai: currentTask.tanggalMulai,
-        tanggalSelesai: currentTask.tanggalSelesai,
-        lokasiPenugasan: currentTask.lokasiPenugasan,
-        lokasiSpesifik: currentTask.lokasiSpesifik || '',
-        deskripsi: currentTask.deskripsi || '',
-        pegawaiIds: currentTask.pegawaiDitugaskan.map((p) => p.id),
-      });
-      setIsSaved(false);
-    }
-  }, [currentTask]);
+  const assignedPegawai = useMemo(
+    () => pegawaiList.filter((p) => formData.pegawaiIds.includes(p.id)),
+    [pegawaiList, formData.pegawaiIds],
+  );
+
+  const scheduleConflicts = useMemo(
+    () =>
+      detectScheduleConflicts(
+        {
+          id: currentTask.id,
+          tanggalMulai: formData.tanggalMulai,
+          tanggalSelesai: formData.tanggalSelesai || formData.tanggalMulai,
+          jamMulai: formData.jamMulai,
+          jamSelesai: formData.jamSelesai,
+          pegawaiDitugaskan: assignedPegawai,
+        },
+        allTasks,
+      ),
+    [
+      currentTask.id,
+      formData.tanggalMulai,
+      formData.tanggalSelesai,
+      formData.jamMulai,
+      formData.jamSelesai,
+      assignedPegawai,
+      allTasks,
+    ],
+  );
 
   const handlePegawaiToggle = (id: string) => {
+    setErrorMsg('');
     setFormData((prev) => {
       const exists = prev.pegawaiIds.includes(id);
-      if (exists) {
-        if (prev.pegawaiIds.length === 1) {
-          alert('Minimal harus ada 1 pegawai yang ditugaskan.');
-          return prev;
-        }
-        return { ...prev, pegawaiIds: prev.pegawaiIds.filter((pId) => pId !== id) };
+      if (exists && prev.pegawaiIds.length === 1) {
+        setErrorMsg('Minimal harus ada 1 pegawai yang ditugaskan.');
+        return prev;
       }
-      return { ...prev, pegawaiIds: [...prev.pegawaiIds, id] };
+      const nextIds = exists
+        ? prev.pegawaiIds.filter((pId) => pId !== id)
+        : [...prev.pegawaiIds, id];
+      return {
+        ...prev,
+        pegawaiIds: nextIds,
+        kategoriTemplate: resolveKategoriTemplate(nextIds.length),
+      };
     });
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent, resendToQueue = false) => {
     e.preventDefault();
-    if (!selectedTaskId || !currentTask) return;
+    setErrorMsg('');
+    setSavedNotice('');
 
-    const assignedPegawai = dummyPegawaiList.filter((p) => formData.pegawaiIds.includes(p.id));
+    if (assignedPegawai.length === 0) {
+      setErrorMsg('Minimal harus ada 1 pegawai yang ditugaskan.');
+      return;
+    }
 
-    await updateTask(selectedTaskId, {
-      nomorSurat: formData.nomorSurat,
+    const nextStatus: StatusSuratTugas = resendToQueue ? 'DRAFT' : formData.status;
+    if (nextStatus !== 'DITOLAK' && scheduleConflicts.length > 0) {
+      const names = Array.from(new Set(scheduleConflicts.map((c) => c.pegawai.nama))).join(', ');
+      setErrorMsg(
+        `Tidak dapat menyimpan karena bentrok tanggal & jam pada: ${names}. Silakan ganti personil yang ditugaskan.`,
+      );
+      return;
+    }
+
+    let uploadedUrl = currentTask.filePerbaikanUrl;
+    let uploadedName = currentTask.filePerbaikanNama;
+    if (formData.filePerbaikan) {
+      const validation = validateDocumentFile(formData.filePerbaikan);
+      if (validation) {
+        setErrorMsg(validation);
+        return;
+      }
+      try {
+        uploadedUrl = await readFileAsDataUrl(formData.filePerbaikan);
+        uploadedName = formData.filePerbaikan.name;
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : 'Gagal membaca file perbaikan.');
+        return;
+      }
+    }
+
+    const updatedWorkflow: WorkflowStep[] = resendToQueue
+      ? [
+          ...(currentTask.workflow || []),
+          {
+            stage: 'DRAFT',
+            label: 'Perbaikan & Kirim Ulang (Admin)',
+            actor: 'Admin',
+            tanggal: new Date().toISOString().replace('T', ' ').substring(0, 16),
+            status: 'COMPLETED',
+            catatan: `Surat diperbarui (${formData.nomorSurat}) dan dikirim kembali ke persetujuan.`,
+          },
+        ]
+      : currentTask.workflow;
+
+    await onSaveTask(currentTask.id, {
+      nomorSurat: formData.nomorSurat.trim() || currentTask.nomorSurat,
       perihal: formData.perihal,
       unitKerja: formData.unitKerja,
-      status: formData.status,
+      kategoriTemplate: formData.kategoriTemplate,
+      status: nextStatus,
       tanggalMulai: formData.tanggalMulai,
       tanggalSelesai: formData.tanggalSelesai,
+      jamMulai: formData.jamMulai || DEFAULT_JAM_MULAI,
+      jamSelesai: formData.jamSelesai || DEFAULT_JAM_SELESAI,
       lokasiPenugasan: formData.lokasiPenugasan,
       lokasiSpesifik: formData.lokasiSpesifik,
       deskripsi: formData.deskripsi,
       pegawaiDitugaskan: assignedPegawai,
+      filePerbaikanUrl: uploadedUrl,
+      filePerbaikanNama: uploadedName,
+      alasanPenolakan: resendToQueue ? undefined : currentTask.alasanPenolakan,
+      workflow: updatedWorkflow,
     });
 
-    setIsSaved(true);
+    setSavedNotice(
+      resendToQueue
+        ? 'Perubahan surat & file perbaikan disimpan dan dikirim kembali ke antrian persetujuan!'
+        : 'Perubahan data surat tugas berhasil disimpan! Mengalihkan ke daftar tugas...',
+    );
     setTimeout(() => {
       navigate('/admin/tugas');
-    }, 1200);
+    }, 1000);
   };
 
   const handleDelete = async () => {
-    if (!selectedTaskId) return;
-    if (confirm(`Apakah Anda yakin ingin menghapus surat tugas "${formData.nomorSurat}"? Tindakan ini tidak dapat dibatalkan.`)) {
-      await deleteTask(selectedTaskId);
-      alert('Surat tugas berhasil dihapus.');
+    if (
+      confirm(
+        `Apakah Anda yakin ingin menghapus surat tugas "${formData.nomorSurat}"? Tindakan ini tidak dapat dibatalkan.`,
+      )
+    ) {
+      await onDeleteTask(currentTask.id);
       navigate('/admin/tugas');
     }
   };
 
-  if (!currentTask) {
-    return (
-      <div className="mx-auto max-w-4xl p-12 text-center bg-white rounded-2xl border border-slate-200">
-        <FileEdit className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-        <h2 className="text-lg font-bold text-slate-700">Tidak Ada Data Penugasan</h2>
-        <p className="text-sm text-slate-500 mt-1 mb-4">Belum ada surat tugas yang dapat diedit di sistem.</p>
-        <button
-          onClick={() => navigate('/admin/tugas/buat')}
-          className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
-        >
-          Buat Tugas Baru
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/admin/tugas')}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
-            title="Kembali"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <FileEdit className="h-6 w-6 text-blue-600" />
-              Edit Surat Tugas
-            </h1>
-            <p className="text-sm text-slate-500">Perbarui rincian, status, lokasi, dan personil surat tugas.</p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleDelete}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
-        >
-          <Trash2 className="h-4 w-4" /> Hapus Surat Tugas
-        </button>
-      </div>
-
-      {isSaved && (
-        <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-800 animate-in fade-in">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-          <span className="text-sm font-semibold">Perubahan data surat tugas berhasil disimpan! Mengalihkan ke daftar tugas...</span>
+    <>
+      {errorMsg && (
+        <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800">
+          <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+          <span className="text-sm font-semibold">{errorMsg}</span>
         </div>
       )}
 
-      {/* Task Selector Dropdown */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Tugas yang Diedit:</label>
-        <select
-          value={selectedTaskId}
-          onChange={(e) => setSelectedTaskId(e.target.value)}
-          className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 max-w-md"
-        >
-          {tasks.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.nomorSurat} - {t.perihal.substring(0, 45)}...
-            </option>
-          ))}
-        </select>
-      </div>
+      {savedNotice && (
+        <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-800 animate-in fade-in">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+          <span className="text-sm font-semibold">{savedNotice}</span>
+        </div>
+      )}
 
-      {/* Form Card */}
-      <form onSubmit={handleSave} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+      <form onSubmit={(e) => handleSave(e, false)} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" /> Hapus Surat Tugas
+          </button>
+        </div>
+
         <div className="grid gap-6 md:grid-cols-2">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-              Nomor Surat
+              Nomor Surat (Bisa Diubah)
             </label>
             <input
               type="text"
               required
               value={formData.nomorSurat}
               onChange={(e) => setFormData({ ...formData, nomorSurat: e.target.value })}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 font-mono text-sm font-semibold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+              Kategori Template SPT
+            </label>
+            <select
+              value={formData.kategoriTemplate}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  kategoriTemplate: e.target.value as KategoriTemplateSurat,
+                })
+              }
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
+            >
+              <option value="INDIVIDU">Individu (1 Orang)</option>
+              <option value="BERDUA">Berdua (2 Orang)</option>
+              <option value="KELOMPOK">Kelompok (Tim)</option>
+            </select>
           </div>
 
           <div>
@@ -200,19 +297,6 @@ export const EditTugasPage = () => {
             </select>
           </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-              Perihal Penugasan
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.perihal}
-              onChange={(e) => setFormData({ ...formData, perihal: e.target.value })}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
               Unit Kerja
@@ -229,10 +313,23 @@ export const EditTugasPage = () => {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+              Perihal Penugasan
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.perihal}
+              onChange={(e) => setFormData({ ...formData, perihal: e.target.value })}
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:col-span-2">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5 text-blue-500" /> Tanggal Mulai
+                <Calendar className="h-3.5 w-3.5 text-blue-500" /> Tgl Mulai
               </label>
               <input
                 type="date"
@@ -244,7 +341,7 @@ export const EditTugasPage = () => {
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5 text-blue-500" /> Selesai
+                <Calendar className="h-3.5 w-3.5 text-blue-500" /> Tgl Selesai
               </label>
               <input
                 type="date"
@@ -254,7 +351,48 @@ export const EditTugasPage = () => {
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5 text-blue-500" /> Jam Mulai
+              </label>
+              <input
+                type="time"
+                required
+                value={formData.jamMulai}
+                onChange={(e) => setFormData({ ...formData, jamMulai: e.target.value })}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5 text-blue-500" /> Jam Selesai
+              </label>
+              <input
+                type="time"
+                required
+                value={formData.jamSelesai}
+                onChange={(e) => setFormData({ ...formData, jamSelesai: e.target.value })}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
           </div>
+
+          {scheduleConflicts.length > 0 && (
+            <div className="md:col-span-2 rounded-xl border-2 border-rose-300 bg-rose-50 p-4 space-y-1.5 text-xs text-rose-800">
+              <p className="font-bold flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                Bentrok Tanggal &amp; Jam Terdeteksi — Harus Ganti Orangnya
+              </p>
+              <ul className="list-disc list-inside space-y-0.5 text-[11px]">
+                {scheduleConflicts.map((c, idx) => (
+                  <li key={`${c.pegawai.id}-${c.conflictingTask.id}-${idx}`}>
+                    <strong>{c.pegawai.nama}</strong> bentrok dengan{' '}
+                    <span className="font-mono font-bold">{c.conflictingTask.nomorSurat}</span> ({c.overlapStartDate} s/d {c.overlapEndDate}, {c.conflictTimeRange})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1">
@@ -293,6 +431,46 @@ export const EditTugasPage = () => {
               className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
+
+          {/* Upload File Perbaikan (Word / PDF) */}
+          <div className="md:col-span-2 rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-indigo-800 flex items-center gap-1.5">
+                <Upload className="h-4 w-4 text-indigo-600" />
+                Upload File Perbaikan (Jika Diedit di Microsoft Word / PDF)
+              </label>
+              {currentTask.filePerbaikanUrl && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadFileUrl(
+                      currentTask.filePerbaikanUrl,
+                      currentTask.filePerbaikanNama || `${formData.nomorSurat}.docx`,
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white border border-indigo-200 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" /> Unduh: {currentTask.filePerbaikanNama || 'File Perbaikan'}
+                </button>
+              )}
+            </div>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx"
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  filePerbaikan: e.target.files?.[0] || null,
+                })
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs file:mr-3 file:rounded-full file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
+            />
+            {formData.filePerbaikan && (
+              <p className="text-xs font-semibold text-emerald-700">
+                File baru siap diunggah: {formData.filePerbaikan.name}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Pegawai Ditugaskan Checkbox Selector */}
@@ -301,17 +479,37 @@ export const EditTugasPage = () => {
             <Users className="h-4 w-4 text-blue-600" />
             Personil Pegawai Ditugaskan ({formData.pegawaiIds.length} Dipilih)
           </label>
-          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 max-h-56 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
-            {dummyPegawaiList.map((p) => {
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 max-h-64 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
+            {pegawaiList.map((p) => {
               const isSelected = formData.pegawaiIds.includes(p.id);
+              const pStats = getPegawaiDinasStats(
+                p,
+                allTasks,
+                formData.tanggalMulai || undefined,
+                currentTask.id,
+              );
+              const pConflicts = detectScheduleConflicts(
+                {
+                  id: currentTask.id,
+                  tanggalMulai: formData.tanggalMulai,
+                  tanggalSelesai: formData.tanggalSelesai || formData.tanggalMulai,
+                  jamMulai: formData.jamMulai,
+                  jamSelesai: formData.jamSelesai,
+                  pegawaiDitugaskan: [p],
+                },
+                allTasks,
+              );
+              const hasConflict = pConflicts.length > 0;
               return (
                 <div
                   key={p.id}
                   onClick={() => handlePegawaiToggle(p.id)}
                   className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition select-none ${
-                    isSelected
-                      ? 'bg-blue-50 border-blue-300 text-blue-900 shadow-xs'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                    hasConflict
+                      ? 'bg-rose-50 border-rose-300 text-rose-900'
+                      : isSelected
+                        ? 'bg-blue-50 border-blue-300 text-blue-900 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <img
@@ -322,6 +520,14 @@ export const EditTugasPage = () => {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold truncate">{p.nama}</p>
                     <p className="text-[10px] text-slate-500 truncate">{p.unitKerja} • {p.jabatan}</p>
+                    <p className="text-[10px] font-semibold text-blue-700">
+                      Dinas: {pStats.totalDinas}x (Mgg: {pStats.dinasMingguIni}x • Bln: {pStats.dinasBulanIni}x)
+                    </p>
+                    {hasConflict && (
+                      <p className="text-[10px] font-bold text-rose-700 truncate">
+                        Bentrok: {pConflicts[0].conflictingTask.nomorSurat}
+                      </p>
+                    )}
                   </div>
                   <input
                     type="checkbox"
@@ -336,13 +542,20 @@ export const EditTugasPage = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-100">
           <button
             type="button"
             onClick={() => navigate('/admin/tugas')}
             className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
           >
             Batal
+          </button>
+          <button
+            type="button"
+            onClick={(e) => handleSave(e, true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition cursor-pointer"
+          >
+            <Send className="h-4 w-4" /> Simpan &amp; Kirim Kembali
           </button>
           <button
             type="submit"
@@ -352,6 +565,89 @@ export const EditTugasPage = () => {
           </button>
         </div>
       </form>
+    </>
+  );
+};
+
+export const EditTugasPage = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryId = searchParams.get('id');
+  const { tasks, pegawaiList, updateTask, deleteTask } = usePenugasan();
+
+  const [manualTaskId, setManualTaskId] = useState<string>('');
+  const selectedTaskId =
+    manualTaskId && tasks.some((t) => t.id === manualTaskId)
+      ? manualTaskId
+      : queryId && tasks.some((t) => t.id === queryId)
+        ? queryId
+        : tasks[0]?.id || '';
+
+  const currentTask = tasks.find((t) => t.id === selectedTaskId);
+
+  if (!currentTask) {
+    return (
+      <div className="mx-auto max-w-4xl p-12 text-center bg-white rounded-2xl border border-slate-200">
+        <FileEdit className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+        <h2 className="text-lg font-bold text-slate-700">Tidak Ada Data Penugasan</h2>
+        <p className="text-sm text-slate-500 mt-1 mb-4">Belum ada surat tugas yang dapat diedit di sistem.</p>
+        <button
+          onClick={() => navigate('/admin/tugas/buat')}
+          className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
+        >
+          Buat Tugas Baru
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin/tugas')}
+            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            title="Kembali"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <FileEdit className="h-6 w-6 text-blue-600" />
+              Edit Surat Tugas &amp; Upload Perbaikan
+            </h1>
+            <p className="text-sm text-slate-500">
+              Perbarui nomor surat, personil, jadwal (tanggal &amp; jam), atau unggah file perbaikan Word/PDF.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Task Selector Dropdown */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Tugas yang Diedit:</label>
+        <select
+          value={selectedTaskId}
+          onChange={(e) => setManualTaskId(e.target.value)}
+          className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 max-w-md"
+        >
+          {tasks.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.nomorSurat} - {t.perihal.substring(0, 45)}...
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <EditTugasFormContent
+        key={currentTask.id}
+        currentTask={currentTask}
+        allTasks={tasks}
+        pegawaiList={pegawaiList}
+        onSaveTask={updateTask}
+        onDeleteTask={deleteTask}
+      />
     </div>
   );
 };

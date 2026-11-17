@@ -1,5 +1,20 @@
+import axios from 'axios';
 import { axiosInstance } from './axiosInstance';
-import { dummyAjuanSuratTugas } from '@/data/dummyData';
+import { dummyAjuanSuratTugas, dummyPegawaiList } from '@/data/dummyData';
+import type { AjuanSuratTugas, Pegawai } from '@/types';
+
+const extractErrorInfo = (error: unknown): { isNetworkError: boolean; message?: string } => {
+  if (axios.isAxiosError(error) && error.response) {
+    const data = error.response.data as { message?: string | string[] } | undefined;
+    const rawMsg = data?.message;
+    const message = Array.isArray(rawMsg) ? rawMsg.join(', ') : rawMsg;
+    return {
+      isNetworkError: false,
+      message: typeof message === 'string' && message.trim() ? message : `Permintaan ditolak (${error.response.status}).`,
+    };
+  }
+  return { isNetworkError: true };
+};
 
 export const apiService = {
   // 1. Dashboard
@@ -25,7 +40,7 @@ export const apiService = {
   // 3. Tugas
   async getTugas() {
     try {
-      const response = await axiosInstance.get('/tugas');
+      const response = await axiosInstance.get<AjuanSuratTugas[]>('/tugas');
       return { success: true, data: response.data };
     } catch {
       return { success: false, fallback: true, data: dummyAjuanSuratTugas };
@@ -33,9 +48,9 @@ export const apiService = {
   },
 
   // Create Tugas
-  async createTugas(taskData: any) {
+  async createTugas(taskData: Partial<AjuanSuratTugas>) {
     try {
-      const response = await axiosInstance.post('/tugas', taskData);
+      const response = await axiosInstance.post<AjuanSuratTugas>('/tugas', taskData);
       return { success: true, data: response.data };
     } catch {
       return { success: false, fallback: true };
@@ -45,7 +60,7 @@ export const apiService = {
   // 4. Update Status Tugas
   async updateStatusTugas(id: string, status: string) {
     try {
-      const response = await axiosInstance.patch(`/tugas/${id}/status`, { status });
+      const response = await axiosInstance.patch<AjuanSuratTugas>(`/tugas/${id}/status`, { status });
       return { success: true, data: response.data };
     } catch {
       return { success: false, fallback: true };
@@ -53,9 +68,9 @@ export const apiService = {
   },
 
   // Update Full Tugas
-  async updateTugas(id: string, taskData: any) {
+  async updateTugas(id: string, taskData: Partial<AjuanSuratTugas>) {
     try {
-      const response = await axiosInstance.patch(`/tugas/${id}`, taskData);
+      const response = await axiosInstance.patch<AjuanSuratTugas>(`/tugas/${id}`, taskData);
       return { success: true, data: response.data };
     } catch {
       return { success: false, fallback: true };
@@ -72,7 +87,47 @@ export const apiService = {
     }
   },
 
-  // 5. Auth Login
+  // 5. Pegawai (PostgreSQL CRUD)
+  async getPegawai() {
+    try {
+      const response = await axiosInstance.get<Pegawai[]>('/pegawai');
+      return { success: true as const, data: response.data };
+    } catch {
+      return { success: false as const, fallback: true, data: dummyPegawaiList };
+    }
+  },
+
+  async createPegawai(pegawaiData: Partial<Pegawai>) {
+    try {
+      const response = await axiosInstance.post<Pegawai>('/pegawai', pegawaiData);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  async updatePegawai(id: string, pegawaiData: Partial<Pegawai>) {
+    try {
+      const response = await axiosInstance.patch<Pegawai>(`/pegawai/${id}`, pegawaiData);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  async deletePegawai(id: string) {
+    try {
+      const response = await axiosInstance.delete<Pegawai>(`/pegawai/${id}`);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  // 6. Auth Login
   async login(email: string, password: string) {
     try {
       const response = await axiosInstance.post('/auth/login', { email, password });

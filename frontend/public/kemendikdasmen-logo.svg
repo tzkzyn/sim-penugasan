@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 110" width="460" height="110" fill="none">
+  <!-- Tut Wuri Handayani Circular Badge -->
+  <g transform="translate(10, 5)">
+    <!-- Outer Crest Shape -->
+    <path d="M 50 2 C 77 2 98 23 98 50 C 98 77 77 98 50 98 C 23 98 2 77 2 50 C 2 23 23 2 50 2 Z" fill="#0284c7" />
+    <circle cx="50" cy="50" r="44" stroke="#ffffff" stroke-width="2.5" fill="#0284c7" />
+    <!-- Golden Flame / Obor -->
+    <path d="M 50 16 C 53 24 57 28 54 36 C 52 40 48 40 46 36 C 43 28 47 24 50 16 Z" fill="#fbbf24" stroke="#ffffff" stroke-width="0.8" />
+    <path d="M 50 22 C 51.5 26 53.5 28 52 32 C 51 34 49 34 48 32 C 46.5 28 48.5 26 50 22 Z" fill="#ef4444" />
+    <!-- Garuda Wings / Sayap -->
+    <path d="M 50 38 C 42 34 26 42 22 56 C 28 56 34 52 38 48 C 34 56 32 62 36 68 C 40 64 44 58 46 52 C 44 60 46 66 50 72 C 54 66 56 60 54 52 C 56 58 60 64 64 68 C 68 62 66 56 62 48 C 66 52 72 56 78 56 C 74 42 58 34 50 38 Z" fill="#fbbf24" stroke="#ffffff" stroke-width="1" />
+    <!-- Open Book / Kitab Suci -->
+    <path d="M 50 71 C 44 67 36 68 30 73 L 30 79 C 36 74 44 73 50 77 C 56 73 64 74 70 79 L 70 73 C 64 68 56 67 50 71 Z" fill="#ffffff" stroke="#0284c7" stroke-width="1" />
+    <!-- Belanga Bawah -->
+    <path d="M 36 82 C 44 86 56 86 64 82 L 62 86 C 54 89 46 89 38 86 Z" fill="#fbbf24" />
+  </g>
+
+  <!-- Brand Typography: Kemendikdasmen -->
+  <text x="130" y="70" font-family="'Arial', 'Helvetica', sans-serif" font-weight="900" font-size="44" letter-spacing="-1">
+    <tspan fill="#0284c7">Kemen</tspan><tspan fill="#f59e0b">dikdasmen</tspan>
+  </text>
+</svg>
+

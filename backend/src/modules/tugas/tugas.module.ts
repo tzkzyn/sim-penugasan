@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { TugasController } from './tugas.controller';
+import { PegawaiController, TugasController } from './tugas.controller';
 import { TugasService } from './tugas.service';
 import { PrismaService } from '../../prisma.service';
 
 @Module({
-  controllers: [TugasController],
+  controllers: [TugasController, PegawaiController],
   providers: [TugasService, PrismaService],
   exports: [TugasService, PrismaService],
 })

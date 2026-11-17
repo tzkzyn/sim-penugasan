@@ -13,9 +13,33 @@ import {
   Calendar,
   X,
   Printer,
+  Download,
 } from 'lucide-react';
 import type { AjuanSuratTugas } from '@/types';
 import { CetakSuratTugasModal } from '@/components/ui/CetakSuratTugasModal';
+
+const hasLaporan = (task: AjuanSuratTugas): boolean =>
+  Boolean(task.fileLaporanUrl || task.fileDraftUrl);
+
+const downloadLaporanTugas = (task: AjuanSuratTugas) => {
+  const fileUrl = task.fileLaporanUrl || task.fileDraftUrl;
+  if (!fileUrl) return;
+  const isSafeUrl =
+    fileUrl.startsWith('data:') ||
+    fileUrl.startsWith('blob:') ||
+    fileUrl.startsWith('https://') ||
+    fileUrl.startsWith('http://') ||
+    fileUrl.startsWith('/');
+  if (!isSafeUrl) return;
+  const safeNomor = (task.nomorSurat || task.id).replace(/[^a-zA-Z0-9._-]/g, '_');
+  const fileName = task.fileLaporanNama || `Laporan_${safeNomor}.pdf`;
+  const link = document.createElement('a');
+  link.href = fileUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 export const SuratTugasPage = () => {
   const { user } = useAuth();
@@ -33,9 +57,9 @@ export const SuratTugasPage = () => {
 
   const filteredSurat = unitTasks.filter((surat) => {
     const matchSearch =
-      surat.nomorSurat.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      surat.perihal.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      surat.lokasiPenugasan.toLowerCase().includes(searchTerm.toLowerCase());
+      (surat.nomorSurat || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (surat.perihal || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (surat.lokasiPenugasan || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     if (!matchSearch) return false;
 
@@ -86,7 +110,7 @@ export const SuratTugasPage = () => {
           <Filter className="h-4 w-4 text-slate-400" />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'SURAT_TERBIT' | 'PROSES' | 'DITOLAK')}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="ALL">Semua Status</option>
@@ -107,6 +131,7 @@ export const SuratTugasPage = () => {
                 <th className="py-3.5 px-4">Pengaju / Ditugaskan</th>
                 <th className="py-3.5 px-4">Lokasi & Waktu</th>
                 <th className="py-3.5 px-4">Status</th>
+                <th className="py-3.5 px-4">Laporan Pegawai</th>
                 <th className="py-3.5 px-4 text-center">Aksi</th>
               </tr>
             </thead>
@@ -153,6 +178,27 @@ export const SuratTugasPage = () => {
                         </span>
                       )}
                     </td>
+                    <td className="py-4 px-4">
+                      {hasLaporan(item) ? (
+                        <div className="inline-flex flex-col gap-0.5">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200 w-fit">
+                            <CheckCircle2 className="h-3 w-3" /> Berkas Lengkap
+                          </span>
+                          {item.fileLaporanNama && (
+                            <span
+                              className="max-w-[150px] truncate text-[11px] text-slate-500"
+                              title={item.fileLaporanNama}
+                            >
+                              {item.fileLaporanNama}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+                          <Clock className="h-3 w-3" /> Belum Diunggah
+                        </span>
+                      )}
+                    </td>
                     <td className="py-4 px-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
@@ -162,6 +208,16 @@ export const SuratTugasPage = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
+                        {hasLaporan(item) && (
+                          <button
+                            type="button"
+                            onClick={() => downloadLaporanTugas(item)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer"
+                            title="Unduh Berkas Laporan Pegawai"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setSuratToPrint(item)}
                           className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 transition-colors cursor-pointer"
@@ -175,7 +231,7 @@ export const SuratTugasPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="py-12 text-center text-sm text-slate-500">
                     Tidak ditemukan surat tugas yang sesuai kriteria pencarian.
                   </td>
                 </tr>
@@ -246,6 +302,45 @@ export const SuratTugasPage = () => {
                   ))}
                 </ul>
               </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <p className="text-xs font-semibold uppercase text-slate-400">
+                  Berkas Laporan Pelaksanaan Tugas
+                </p>
+                {hasLaporan(selectedSurat) ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="space-y-0.5 min-w-0">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        <CheckCircle2 className="h-3 w-3" /> Berkas Lengkap
+                      </span>
+                      <p className="text-xs font-semibold text-slate-800 truncate pt-1">
+                        {selectedSurat.fileLaporanNama || 'Dokumen Laporan Tugas'}
+                      </p>
+                      {selectedSurat.tanggalLaporan && (
+                        <p className="text-[11px] text-slate-500">
+                          Diunggah: {selectedSurat.tanggalLaporan}
+                        </p>
+                      )}
+                      {selectedSurat.catatanLaporan && (
+                        <p className="text-xs text-slate-600 italic">
+                          &quot;{selectedSurat.catatanLaporan}&quot;
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => downloadLaporanTugas(selectedSurat)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition cursor-pointer shrink-0"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Unduh Berkas Laporan
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Pegawai belum mengunggah berkas laporan pelaksanaan tugas.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end pt-3 border-t border-slate-100">
@@ -260,11 +355,12 @@ export const SuratTugasPage = () => {
         </div>
       )}
 
-      {/* Modal Cetak Surat Tugas Resmi */}
+      {/* Modal Cetak & Edit Kertas A4 Surat Tugas Resmi */}
       <CetakSuratTugasModal
         surat={suratToPrint}
         isOpen={Boolean(suratToPrint)}
         onClose={() => setSuratToPrint(null)}
+        showApprovalActions={true}
       />
     </div>
   );

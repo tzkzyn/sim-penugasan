@@ -1,10 +1,42 @@
 import { useState } from 'react';
-import { FileText, Download, Printer, Filter, Calendar, Award } from 'lucide-react';
+import {
+  FileText,
+  Download,
+  Printer,
+  Filter,
+  Calendar,
+  Award,
+  CheckCircle2,
+  Clock,
+} from 'lucide-react';
 import { usePenugasan } from '@/context/PenugasanContext';
-import { dummyPegawaiList } from '@/data/dummyData';
+import type { AjuanSuratTugas } from '@/types';
+
+const hasLaporan = (task: AjuanSuratTugas): boolean =>
+  Boolean(task.fileLaporanUrl || task.fileDraftUrl);
+
+const downloadLaporanTugas = (task: AjuanSuratTugas) => {
+  const fileUrl = task.fileLaporanUrl || task.fileDraftUrl;
+  if (!fileUrl) return;
+  const isSafeUrl =
+    fileUrl.startsWith('data:') ||
+    fileUrl.startsWith('blob:') ||
+    fileUrl.startsWith('https://') ||
+    fileUrl.startsWith('http://') ||
+    fileUrl.startsWith('/');
+  if (!isSafeUrl) return;
+  const safeNomor = (task.nomorSurat || task.id).replace(/[^a-zA-Z0-9._-]/g, '_');
+  const fileName = task.fileLaporanNama || `Laporan_${safeNomor}.pdf`;
+  const link = document.createElement('a');
+  link.href = fileUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 export const LaporanPage = () => {
-  const { tasks } = usePenugasan();
+  const { tasks, pegawaiList } = usePenugasan();
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedUnit, setSelectedUnit] = useState('ALL');
 
@@ -13,7 +45,7 @@ export const LaporanPage = () => {
   const unitStats = unitList.map((unit) => {
     const unitTasks = tasks.filter((t) => t.unitKerja === unit);
     const completedTasks = unitTasks.filter((t) => t.status === 'SURAT_TERBIT');
-    const staffInvolved = dummyPegawaiList.filter((p) => p.unitKerja === unit).length;
+    const staffInvolved = pegawaiList.filter((p) => p.unitKerja === unit).length;
     const totalJP = completedTasks.length * 16; // 16 JP per completed task
 
     return {
@@ -26,9 +58,16 @@ export const LaporanPage = () => {
     };
   });
 
+  const archiveTasks = tasks.filter((t) => {
+    const matchUnit = selectedUnit === 'ALL' || t.unitKerja === selectedUnit;
+    const matchYear =
+      selectedYear === 'ALL' || (t.tanggalMulai || '').startsWith(selectedYear);
+    return matchUnit && matchYear;
+  });
+
   const totalCompleted = tasks.filter((t) => t.status === 'SURAT_TERBIT').length;
   const totalJPAll = totalCompleted * 16;
-  const totalStaff = dummyPegawaiList.length;
+  const totalStaff = pegawaiList.length;
 
   const handlePrint = () => {
     window.print();
@@ -196,6 +235,97 @@ export const LaporanPage = () => {
                     </td>
                   </tr>
                 ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Arsip Berkas Laporan Pelaksanaan Tugas Pegawai */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <FileText className="h-5 w-5 text-purple-600" />
+            Arsip Berkas Laporan Pelaksanaan Tugas Pegawai
+          </h2>
+          <span className="text-xs font-semibold text-slate-500">
+            {archiveTasks.length} Penugasan ({archiveTasks.filter(hasLaporan).length} Laporan Masuk)
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-sm">
+            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600">
+              <tr>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Nomor Surat & Perihal</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Unit Kerja & Pengaju</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Status Laporan</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {archiveTasks.map((t) => {
+                const uploaded = hasLaporan(t);
+                return (
+                  <tr key={t.id} className="hover:bg-slate-50/60 transition">
+                    <td className="px-6 py-4 max-w-sm">
+                      <p className="font-mono text-xs font-bold text-blue-700">{t.nomorSurat}</p>
+                      <p className="font-semibold text-slate-800 mt-0.5">{t.perihal}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {t.tanggalMulai} s/d {t.tanggalSelesai}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4 text-xs text-slate-600">
+                      <span className="inline-block rounded-md bg-purple-50 px-2 py-0.5 font-semibold text-purple-700">
+                        {t.unitKerja}
+                      </span>
+                      <p className="font-medium text-slate-800 mt-1">{t.pengaju?.nama || '-'}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      {uploaded ? (
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                            <CheckCircle2 className="h-3 w-3" /> Berkas Lengkap
+                          </span>
+                          {t.fileLaporanNama && (
+                            <p className="text-xs font-medium text-slate-700 max-w-[220px] truncate" title={t.fileLaporanNama}>
+                              {t.fileLaporanNama}
+                            </p>
+                          )}
+                          {t.catatanLaporan && (
+                            <p className="text-[11px] text-slate-500 max-w-[220px] truncate italic" title={t.catatanLaporan}>
+                              &quot;{t.catatanLaporan}&quot;
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+                          <Clock className="h-3 w-3" /> Belum Diunggah
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {uploaded ? (
+                        <button
+                          type="button"
+                          onClick={() => downloadLaporanTugas(t)}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition cursor-pointer"
+                        >
+                          <Download className="h-3.5 w-3.5" /> Unduh Laporan
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">Menunggu unggahan</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {archiveTasks.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-10 text-center text-sm text-slate-400">
+                    Tidak ada data penugasan pada filter tahun dan unit ini.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

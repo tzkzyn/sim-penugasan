@@ -15,7 +15,7 @@ interface KlaimBiaya {
 }
 
 export const SimpananPage = () => {
-  const { tasks } = usePenugasan();
+  const { myTasks: tasks } = usePenugasan();
 
   const klaimList = useMemo<KlaimBiaya[]>(() => {
     return tasks.map((t) => {

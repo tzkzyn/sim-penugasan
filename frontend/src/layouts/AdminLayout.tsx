@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { SidebarBotanicalDecor } from '@/components/ui/SidebarBotanicalDecor';
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -72,11 +73,13 @@ function SuperAdminSidebar({ isSidebarCollapsed }: { isSidebarCollapsed: boolean
           onClick={() => setIsSuperAdminMenuOpen((v) => !v)}
           title={isSidebarCollapsed ? 'Superadmin' : undefined}
           aria-expanded={isSuperAdminMenuOpen}
-          className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm transition ${isSidebarCollapsed ? 'justify-center px-0' : 'px-3'
-            } ${isSuperAdminMenuOpen || location.pathname.includes('/akun') || location.pathname.includes('/pokja')
-              ? 'bg-slate-800 text-white'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
+          className={`flex w-full items-center gap-3 py-2.5 text-sm transition-all cursor-pointer ${
+            isSidebarCollapsed ? 'justify-center rounded-xl px-0' : 'rounded-l-full pl-4 pr-5'
+          } ${
+            isSuperAdminMenuOpen || location.pathname.includes('/akun') || location.pathname.includes('/pokja')
+              ? 'bg-white/20 text-white font-semibold'
+              : 'text-blue-100 hover:bg-white/15 hover:text-white'
+          }`}
         >
           <ShieldCheck className="h-5 w-5 shrink-0" />
           {!isSidebarCollapsed && (
@@ -87,11 +90,11 @@ function SuperAdminSidebar({ isSidebarCollapsed }: { isSidebarCollapsed: boolean
           )}
         </button>
         {!isSidebarCollapsed && isSuperAdminMenuOpen && (
-          <div className="mt-1 space-y-1 border-l border-slate-700 pl-4 ml-3">
-            <NavLink to={`${prefix}/akun`} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <div className="mt-1 space-y-1 border-l border-blue-300/35 pl-3 ml-4">
+            <NavLink to={`${prefix}/akun`} className={({ isActive }) => `flex items-center gap-3 rounded-l-full py-2 pl-3 pr-4 text-sm transition-all ${isActive ? 'bg-white text-[#1E40AF] font-bold shadow-xs' : 'text-blue-100/90 hover:bg-white/15 hover:text-white'}`}>
               <KeyRound className="h-4 w-4 shrink-0" /> Akun
             </NavLink>
-            <NavLink to={`${prefix}/pokja`} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+            <NavLink to={`${prefix}/pokja`} className={({ isActive }) => `flex items-center gap-3 rounded-l-full py-2 pl-3 pr-4 text-sm transition-all ${isActive ? 'bg-white text-[#1E40AF] font-bold shadow-xs' : 'text-blue-100/90 hover:bg-white/15 hover:text-white'}`}>
               <Network className="h-4 w-4 shrink-0" /> POKJA
             </NavLink>
           </div>
@@ -105,11 +108,13 @@ function SuperAdminSidebar({ isSidebarCollapsed }: { isSidebarCollapsed: boolean
           onClick={() => setIsAdministratorMenuOpen((v) => !v)}
           title={isSidebarCollapsed ? 'Administrator' : undefined}
           aria-expanded={isAdministratorMenuOpen}
-          className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm transition ${isSidebarCollapsed ? 'justify-center px-0' : 'px-3'
-            } ${isAdministratorMenuOpen || location.pathname.includes('/ajuan-pegawai') || location.pathname.includes('/rekap-penugasan')
-              ? 'bg-slate-800 text-white'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
+          className={`flex w-full items-center gap-3 py-2.5 text-sm transition-all cursor-pointer ${
+            isSidebarCollapsed ? 'justify-center rounded-xl px-0' : 'rounded-l-full pl-4 pr-5'
+          } ${
+            isAdministratorMenuOpen || location.pathname.includes('/ajuan-pegawai') || location.pathname.includes('/rekap-penugasan')
+              ? 'bg-white/20 text-white font-semibold'
+              : 'text-blue-100 hover:bg-white/15 hover:text-white'
+          }`}
         >
           <ShieldCheck className="h-5 w-5 shrink-0" />
           {!isSidebarCollapsed && (
@@ -120,11 +125,11 @@ function SuperAdminSidebar({ isSidebarCollapsed }: { isSidebarCollapsed: boolean
           )}
         </button>
         {!isSidebarCollapsed && isAdministratorMenuOpen && (
-          <div className="mt-1 space-y-1 border-l border-slate-700 pl-4 ml-3">
-            <NavLink to={`${prefix}/ajuan-pegawai`} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <div className="mt-1 space-y-1 border-l border-blue-300/35 pl-3 ml-4">
+            <NavLink to={`${prefix}/ajuan-pegawai`} className={({ isActive }) => `flex items-center gap-3 rounded-l-full py-2 pl-3 pr-4 text-sm transition-all ${isActive ? 'bg-white text-[#1E40AF] font-bold shadow-xs' : 'text-blue-100/90 hover:bg-white/15 hover:text-white'}`}>
               <FileText className="h-4 w-4 shrink-0" /> Ajuan Pegawai
             </NavLink>
-            <NavLink to={`${prefix}/rekap-penugasan`} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+            <NavLink to={`${prefix}/rekap-penugasan`} className={({ isActive }) => `flex items-center gap-3 rounded-l-full py-2 pl-3 pr-4 text-sm transition-all ${isActive ? 'bg-white text-[#1E40AF] font-bold shadow-xs' : 'text-blue-100/90 hover:bg-white/15 hover:text-white'}`}>
               <ChartNoAxesCombined className="h-4 w-4 shrink-0" /> Rekap Penugasan
             </NavLink>
           </div>
@@ -143,6 +148,7 @@ function ApprovalSidebar({ isSidebarCollapsed, prefix }: { isSidebarCollapsed: b
     { to: `${prefix}/approval-tugas`, label: 'Approval Tugas', icon: CheckSquare },
     { to: `${prefix}/approval-cuti`, label: 'Approval Izin & Cuti', icon: CalendarCheck },
     { to: `${prefix}/surat-tugas`, label: 'Surat Tugas', icon: FileText },
+    { to: `${prefix}/template-surat`, label: 'Template Surat', icon: ClipboardList },
     { to: `${prefix}/riwayat-approval`, label: 'Riwayat Approval', icon: History },
   ];
 
@@ -155,8 +161,12 @@ function ApprovalSidebar({ isSidebarCollapsed, prefix }: { isSidebarCollapsed: b
           end={link.to.endsWith('/dashboard')}
           title={isSidebarCollapsed ? link.label : undefined}
           className={({ isActive }) =>
-            `flex items-center gap-3 rounded-xl py-2.5 text-sm transition ${isSidebarCollapsed ? 'justify-center px-0' : 'px-3'
-            } ${isActive ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            `flex items-center gap-3 py-2.5 text-sm transition-all ${
+              isSidebarCollapsed ? 'justify-center rounded-xl px-0' : 'rounded-l-full pl-4 pr-5'
+            } ${
+              isActive
+                ? 'bg-white text-[#1E40AF] font-bold shadow-[0_6px_18px_-4px_rgba(15,23,42,0.22)]'
+                : 'text-blue-100 hover:bg-white/15 hover:text-white'
             }`
           }
         >
@@ -197,9 +207,15 @@ function SidebarMenuItem({ link, currentPath, isSidebarCollapsed }: { link: any;
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           title={isSidebarCollapsed ? link.label : undefined}
-          className={`flex w-full items-center justify-between rounded-xl py-2.5 text-sm transition ${isSidebarCollapsed ? 'justify-center px-0' : 'px-3'
-            } ${isActive || isOpen ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
+          className={`flex w-full items-center justify-between py-2.5 text-sm transition-all cursor-pointer ${
+            isSidebarCollapsed ? 'justify-center rounded-xl px-0' : 'rounded-l-full pl-4 pr-5'
+          } ${
+            isActive
+              ? 'bg-white text-[#1E40AF] font-bold shadow-[0_6px_18px_-4px_rgba(15,23,42,0.22)]'
+              : isOpen
+                ? 'bg-white/20 text-white font-semibold'
+                : 'text-blue-100 hover:bg-white/15 hover:text-white'
+          }`}
         >
           <div className="flex items-center gap-3">
             <Icon className="h-5 w-5 shrink-0" />
@@ -210,7 +226,7 @@ function SidebarMenuItem({ link, currentPath, isSidebarCollapsed }: { link: any;
           )}
         </button>
         {!isSidebarCollapsed && isOpen && (
-          <div className="mt-1 ml-3 flex flex-col space-y-1 border-l border-slate-700 pl-3">
+          <div className="mt-1 ml-4 flex flex-col space-y-1 border-l border-blue-300/35 pl-3">
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {link.items.map((subItem: any) => {
               const [basePath, search] = subItem.to.split('?');
@@ -228,8 +244,11 @@ function SidebarMenuItem({ link, currentPath, isSidebarCollapsed }: { link: any;
                 <Link
                   key={subItem.to}
                   to={subItem.to}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${childActive ? 'bg-slate-800 text-white font-medium' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-                    }`}
+                  className={`flex items-center gap-3 rounded-l-full py-2 pl-3 pr-4 text-sm transition-all ${
+                    childActive
+                      ? 'bg-white text-[#1E40AF] font-bold shadow-xs'
+                      : 'text-blue-100/90 hover:text-white hover:bg-white/15'
+                  }`}
                 >
                   {SubIcon && <SubIcon className="h-4 w-4 shrink-0" />}
                   {subItem.label}
@@ -248,8 +267,12 @@ function SidebarMenuItem({ link, currentPath, isSidebarCollapsed }: { link: any;
       end={link.to.endsWith('/dashboard')}
       title={isSidebarCollapsed ? link.label : undefined}
       className={({ isActive: navActive }) =>
-        `flex items-center gap-3 rounded-xl py-2.5 text-sm transition ${isSidebarCollapsed ? 'justify-center px-0' : 'px-3'
-        } ${navActive ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+        `flex items-center gap-3 py-2.5 text-sm transition-all ${
+          isSidebarCollapsed ? 'justify-center rounded-xl px-0' : 'rounded-l-full pl-4 pr-5'
+        } ${
+          navActive
+            ? 'bg-white text-[#1E40AF] font-bold shadow-[0_6px_18px_-4px_rgba(15,23,42,0.22)]'
+            : 'text-blue-100 hover:bg-white/15 hover:text-white'
         }`
       }
     >
@@ -272,17 +295,14 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const location = useLocation();
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
+  const isMobileMenuOpen = mobileMenuPath === location.pathname;
+  const setIsMobileMenuOpen = (open: boolean) => setMobileMenuPath(open ? location.pathname : null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [hasUnreadNotif, setHasUnreadNotif] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-
-  // Close mobile drawer on route navigation
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -348,13 +368,15 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="flex min-h-screen">
+    <div className="h-screen overflow-hidden bg-[#F3F6FB]">
+      <div className="flex h-full">
         {/* ====== SIDEBAR ====== */}
-        <aside className={`hidden flex-col bg-slate-950 py-6 text-slate-100 lg:flex transition-all duration-300 ${isSidebarCollapsed ? 'w-20 px-2' : 'w-72 px-5'}`}>
+        <aside className={`relative hidden h-full shrink-0 flex-col overflow-hidden bg-gradient-to-b from-[#1E3A8A] via-[#1D4ED8] to-[#1E40AF] py-6 text-white shadow-xl lg:flex transition-all duration-300 ${isSidebarCollapsed ? 'w-20 px-2.5' : 'w-72 pl-5 pr-0'}`}>
+          <SidebarBotanicalDecor />
+
           {/* Logo & Title */}
-          <Link to={`${prefix}/dashboard`} className={`flex items-center gap-3 py-2 ${isSidebarCollapsed ? 'justify-center' : 'px-2'}`}>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white">
+          <Link to={`${prefix}/dashboard`} className={`relative z-10 flex shrink-0 items-center gap-3 py-2 ${isSidebarCollapsed ? 'justify-center' : 'px-2 pr-5'}`}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-md">
               <img
                 src={`${import.meta.env.BASE_URL}logo-kemendikdasmen.ico`}
                 alt="Logo"
@@ -363,14 +385,14 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
             {!isSidebarCollapsed && (
               <div className="overflow-hidden whitespace-nowrap">
-                <p className="text-sm font-semibold">SIM Penugasan</p>
-                <p className="text-xs text-slate-400">{panelLabel}</p>
+                <p className="text-sm font-bold tracking-tight text-white">SIM Penugasan</p>
+                <p className="text-xs text-blue-200">{panelLabel}</p>
               </div>
             )}
           </Link>
 
           {/* Navigation */}
-          <nav className="mt-8 space-y-1">
+          <nav className="relative z-10 mt-8 flex-1 min-h-0 space-y-1.5 overflow-y-auto">
             {normalizedRole === 'SUPER_ADMIN' ? (
               <SuperAdminSidebar isSidebarCollapsed={isSidebarCollapsed} />
             ) : normalizedRole === 'APPROVAL' ? (
@@ -390,14 +412,16 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="relative flex w-72 max-w-[85vw] flex-col bg-slate-950 p-5 text-slate-100 shadow-2xl">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+            <div className="relative flex w-72 max-w-[85vw] flex-col overflow-hidden bg-gradient-to-b from-[#1E3A8A] via-[#1D4ED8] to-[#1E40AF] py-5 pl-5 pr-0 text-white shadow-2xl">
+              <SidebarBotanicalDecor />
+
+              <div className="relative z-10 flex items-center justify-between pb-4 pr-5 border-b border-white/15">
                 <Link
                   to={`${prefix}/dashboard`}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
                     <img
                       src={`${import.meta.env.BASE_URL}logo-kemendikdasmen.ico`}
                       alt="Logo"
@@ -405,20 +429,20 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
                     />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">SIM Penugasan</p>
-                    <p className="text-xs text-slate-400">{panelLabel}</p>
+                    <p className="text-sm font-bold text-white">SIM Penugasan</p>
+                    <p className="text-xs text-blue-200">{panelLabel}</p>
                   </div>
                 </Link>
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                  className="rounded-lg p-1.5 text-blue-100 hover:bg-white/15 hover:text-white"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <nav className="mt-6 flex-1 space-y-1 overflow-y-auto">
+              <nav className="relative z-10 mt-6 flex-1 space-y-1.5 overflow-y-auto">
                 {normalizedRole === 'SUPER_ADMIN' ? (
                   <SuperAdminSidebar isSidebarCollapsed={false} />
                 ) : normalizedRole === 'APPROVAL' ? (
@@ -435,11 +459,11 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
                 )}
               </nav>
 
-              <div className="pt-4 border-t border-slate-800">
+              <div className="relative z-10 pt-4 pr-5 border-t border-white/15">
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 transition"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/15 px-3 py-2.5 text-sm font-semibold text-white hover:bg-white/25 transition"
                 >
                   <LogOut className="h-4 w-4" /> Keluar
                 </button>
@@ -449,27 +473,27 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
         )}
 
         {/* ====== MAIN CONTENT ====== */}
-        <div className="flex-1 h-screen overflow-y-auto bg-slate-50/50">
+        <div className="flex-1 min-w-0 h-full overflow-y-auto bg-[#F3F6FB]">
           {/* Navbar */}
-          <header className="sticky top-0 z-40 bg-white">
+          <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur-sm shadow-[0_4px_20px_-6px_rgba(30,64,175,0.08)]">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6">
               {/* Left: Mobile & Desktop Hamburger */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(true)}
-                  className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 transition lg:hidden"
+                  className="rounded-xl p-2 text-[#1E40AF] bg-[#EEF3FB] hover:bg-blue-100 transition lg:hidden"
                   aria-label="Buka menu"
                 >
-                  <Menu className="h-6 w-6" />
+                  <Menu className="h-5 w-5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 transition hidden lg:block"
+                  className="rounded-xl p-2 text-[#1E40AF] bg-[#EEF3FB] hover:bg-blue-100 transition hidden lg:block cursor-pointer"
                   aria-label="Kecilkan sidebar"
                 >
-                  <Menu className="h-6 w-6" />
+                  <Menu className="h-5 w-5" />
                 </button>
                 <div className="lg:hidden flex items-center gap-2 pl-1">
                   <div className="h-7 w-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center">
@@ -484,15 +508,15 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               </div>
 
               {/* Right: Notification + Profile */}
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center gap-2.5 ml-auto">
                 {/* Notification Bell */}
                 <div ref={notifRef} className="relative">
                   <button
                     onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileOpen(false); }}
-                    className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                    className="relative p-2.5 bg-[#EEF3FB] text-[#1E40AF] hover:bg-blue-100 rounded-full transition-colors cursor-pointer"
                     aria-label="Notifikasi"
                   >
-                    <Bell className="w-5 h-5" />
+                    <Bell className="w-4 h-4" />
                     {hasUnreadNotif && (
                       <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
                     )}
@@ -579,7 +603,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               </div>
             </div>
             {/* Blue accent line at bottom of navbar */}
-            <div className="h-0.5 bg-blue-600"></div>
+            <div className="h-0.5 bg-gradient-to-r from-[#1E3A8A] via-[#2563EB] to-[#38BDF8]" />
           </header>
 
           <main className="p-4 sm:p-6">{children}</main>

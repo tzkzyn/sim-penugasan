@@ -60,27 +60,96 @@
   border: none !important;
 }
 
+/* ===== Interactive A4 Word Document Paper Styling ===== */
+.a4-paper-sheet {
+  font-family: "Bookman Old Style", "URW Bookman", "Bookman", "Times New Roman", Times, Georgia, serif;
+  color: #0f172a;
+  line-height: 1.5;
+  outline: none;
+}
+
+.a4-paper-sheet:focus {
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.a4-paper-sheet table.spt-layout-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: none !important;
+}
+
+.a4-paper-sheet table.spt-layout-table td,
+.a4-paper-sheet table.spt-layout-table th {
+  border: none !important;
+  vertical-align: top;
+}
+
+.a4-paper-sheet table.spt-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  margin-bottom: 10px;
+}
+
+.a4-paper-sheet table.spt-data-table th,
+.a4-paper-sheet table.spt-data-table td {
+  border: 1px solid #0f172a !important;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.a4-paper-sheet table.spt-data-table th {
+  background-color: #f1f5f9 !important;
+  font-weight: 700;
+  text-align: center;
+}
+
+.a4-paper-sheet .spt-kop-border {
+  border-bottom: 3px double #0f172a;
+  padding-bottom: 10px;
+  margin-bottom: 16px;
+}
+
 /* ===== Print Styling for Surat Perintah Tugas (SPT) ===== */
 @media print {
+  * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transform: none !important;
+  }
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
   body * {
     visibility: hidden;
   }
+  .no-print, .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
   #printable-spt-document, #printable-spt-document * {
-    visibility: visible;
+    visibility: visible !important;
   }
   #printable-spt-document {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    min-height: auto !important;
     margin: 0 !important;
-    padding: 1cm !important;
+    padding: 0.5cm !important;
     box-shadow: none !important;
     border: none !important;
+    background: white !important;
+    z-index: 99999 !important;
   }
   @page {
     size: A4 portrait;
-    margin: 1cm;
+    margin: 10mm 14mm;
   }
 }

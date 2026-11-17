@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { usePenugasan } from '@/context/PenugasanContext';
+import type { AjuanSuratTugas } from '@/types';
 import { Link } from 'react-router-dom';
 import {
   FileText,
@@ -9,15 +10,21 @@ import {
   UploadCloud,
   Search,
   BarChart3,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 
+const hasLaporan = (task: AjuanSuratTugas): boolean =>
+  Boolean(task.fileLaporanUrl || task.fileDraftUrl);
+
 export const LaporanTugasPage = () => {
-  const { tasks } = usePenugasan();
+  const { myTasks: tasks } = usePenugasan();
 
   const [selectedTahun, setSelectedTahun] = useState<string>('2026');
   const [selectedBulan, setSelectedBulan] = useState<string>('ALL');
   const [selectedJenisDinas, setSelectedJenisDinas] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   // Helper detect jenis dinas
   const getJenisDinas = (lokasi: string) => {
@@ -77,7 +84,7 @@ export const LaporanTugasPage = () => {
       const jp = calculateJP(t.tanggalMulai, t.tanggalSelesai);
       totalJP += jp;
       if (t.status === 'SURAT_TERBIT') terbit++;
-      if (t.fileDraftUrl) sudahLaporan++;
+      if (hasLaporan(t)) sudahLaporan++;
     });
 
     return {
@@ -89,12 +96,57 @@ export const LaporanTugasPage = () => {
     };
   }, [filteredTasks]);
 
+  const handleDownloadLaporan = (t: AjuanSuratTugas) => {
+    const fileUrl = t.fileLaporanUrl || t.fileDraftUrl;
+    if (!fileUrl) {
+      setFeedbackMsg(
+        `Berkas laporan untuk ${t.nomorSurat} belum diunggah. Silakan klik tombol Upload terlebih dahulu.`,
+      );
+      return;
+    }
+
+    const isSafeUrl =
+      fileUrl.startsWith('data:') ||
+      fileUrl.startsWith('blob:') ||
+      fileUrl.startsWith('https://') ||
+      fileUrl.startsWith('http://') ||
+      fileUrl.startsWith('/');
+    if (!isSafeUrl) {
+      setFeedbackMsg(`Format tautan berkas untuk ${t.nomorSurat} tidak valid.`);
+      return;
+    }
+
+    const safeNomor = (t.nomorSurat || t.id).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const fileName = t.fileLaporanNama || `Laporan_${safeNomor}.pdf`;
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleExport = () => {
-    alert(`Rekapitulasi Laporan Penugasan Tahun ${selectedTahun} berhasil diunduh dalam format PDF.`);
+    window.print();
   };
 
   return (
     <div className="space-y-6">
+      {feedbackMsg && (
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+            <p>{feedbackMsg}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFeedbackMsg(null)}
+            className="rounded-lg p-1 text-amber-600 hover:bg-amber-100"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       {/* Header Banner */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -235,6 +287,7 @@ export const LaporanTugasPage = () => {
               {filteredTasks.map((t) => {
                 const jenis = getJenisDinas(t.lokasiPenugasan);
                 const jp = calculateJP(t.tanggalMulai, t.tanggalSelesai);
+                const uploaded = hasLaporan(t);
 
                 return (
                   <tr key={t.id} className="hover:bg-slate-50/70 transition">
@@ -268,10 +321,28 @@ export const LaporanTugasPage = () => {
                     </td>
 
                     <td className="px-6 py-4 text-center whitespace-nowrap">
-                      {t.fileDraftUrl ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-                          <CheckCircle2 className="h-3 w-3" /> Berkas Lengkap
-                        </span>
+                      {uploaded ? (
+                        <div className="inline-flex flex-col items-center gap-1">
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                            <CheckCircle2 className="h-3 w-3" /> Berkas Lengkap
+                          </span>
+                          {t.fileLaporanNama && (
+                            <span
+                              className="max-w-[160px] truncate text-[11px] text-slate-500"
+                              title={t.fileLaporanNama}
+                            >
+                              {t.fileLaporanNama}
+                            </span>
+                          )}
+                          {t.catatanLaporan && (
+                            <span
+                              className="max-w-[160px] truncate text-[10px] text-slate-400"
+                              title={t.catatanLaporan}
+                            >
+                              {t.catatanLaporan}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
                           <Clock className="h-3 w-3 text-slate-400" /> Belum Diunggah
@@ -282,16 +353,26 @@ export const LaporanTugasPage = () => {
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <Link
-                          to="/user/upload-surat"
+                          to={`/user/upload-surat?id=${encodeURIComponent(t.id)}`}
                           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition"
-                          title="Unggah laporan pelaksanaan tugas"
+                          title={
+                            uploaded
+                              ? 'Ganti berkas laporan tugas'
+                              : 'Unggah laporan pelaksanaan tugas'
+                          }
                         >
-                          <UploadCloud className="h-3.5 w-3.5" /> Upload
+                          <UploadCloud className="h-3.5 w-3.5" />{' '}
+                          {uploaded ? 'Ganti' : 'Upload'}
                         </Link>
                         <button
-                          onClick={() => alert(`Mengunduh lembar Surat Tugas ${t.nomorSurat}...`)}
+                          type="button"
+                          onClick={() => handleDownloadLaporan(t)}
                           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
-                          title="Unduh berkas surat tugas"
+                          title={
+                            uploaded
+                              ? 'Unduh berkas laporan tugas'
+                              : 'Berkas laporan belum diunggah'
+                          }
                         >
                           <Download className="h-3.5 w-3.5" /> Unduh
                         </button>

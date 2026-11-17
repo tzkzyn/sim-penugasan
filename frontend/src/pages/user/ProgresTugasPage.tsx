@@ -13,31 +13,30 @@ import {
 } from 'lucide-react';
 import type { AjuanSuratTugas } from '@/types';
 
+// Helper calculate progress percentage based on date
+const getTaskProgress = (mulaiStr: string, selesaiStr: string) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(mulaiStr).getTime();
+  const end = new Date(selesaiStr).getTime();
+  const now = today.getTime();
+
+  if (now < start) return { percent: 0, statusLabel: 'Terjadwal', color: 'bg-amber-500' };
+  if (now > end) return { percent: 100, statusLabel: 'Selesai', color: 'bg-emerald-500' };
+
+  const totalDays = Math.max(end - start, 1);
+  const elapsed = Math.max(now - start, 0);
+  const percent = Math.min(Math.max(Math.round((elapsed / totalDays) * 100), 15), 90);
+  return { percent, statusLabel: 'Sedang Berlangsung', color: 'bg-blue-600' };
+};
+
 export const ProgresTugasPage = () => {
-  const { tasks } = usePenugasan();
+  const { myTasks: tasks } = usePenugasan();
 
   const [selectedTahun, setSelectedTahun] = useState<string>('2026');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [detailModal, setDetailModal] = useState<AjuanSuratTugas | null>(null);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Helper calculate progress percentage based on date
-  const getTaskProgress = (mulaiStr: string, selesaiStr: string) => {
-    const start = new Date(mulaiStr).getTime();
-    const end = new Date(selesaiStr).getTime();
-    const now = today.getTime();
-
-    if (now < start) return { percent: 0, statusLabel: 'Terjadwal', color: 'bg-amber-500' };
-    if (now > end) return { percent: 100, statusLabel: 'Selesai', color: 'bg-emerald-500' };
-
-    const totalDays = Math.max(end - start, 1);
-    const elapsed = Math.max(now - start, 0);
-    const percent = Math.min(Math.max(Math.round((elapsed / totalDays) * 100), 15), 90);
-    return { percent, statusLabel: 'Sedang Berlangsung', color: 'bg-blue-600' };
-  };
 
   // Filter tasks for this view: Tasks that are in approved or active state
   const relevantTasks = useMemo(() => {

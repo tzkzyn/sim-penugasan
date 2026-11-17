@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   CheckCircle2,
   FilePlus2,
@@ -53,6 +53,23 @@ const tanggalHariIni = () => {
   return `${tahun}-${bulan}-${tanggal}`;
 };
 
+const readStoredCuti = (): PengajuanCuti[] => {
+  try {
+    const saved = localStorage.getItem('sim_pengajuan_cuti');
+    if (saved) {
+      const parsed: unknown = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return (parsed as PengajuanCuti[]).filter(
+          (p) => p && p.id !== 101 && !p.alasan?.includes('Keperluan Keluarga')
+        );
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return [];
+};
+
 export const CutiPage = () => {
   const { user } = useAuth();
   const [jenis, setJenis] = useState<JenisPengajuan>('CUTI');
@@ -60,22 +77,7 @@ export const CutiPage = () => {
   const [tanggalSelesai, setTanggalSelesai] = useState('');
   const [alasan, setAlasan] = useState('');
   const [lampiranNama, setLampiranNama] = useState<string>('');
-  const [pengajuan, setPengajuan] = useState<PengajuanCuti[]>(() => {
-    try {
-      const saved = localStorage.getItem('sim_pengajuan_cuti');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(
-            (p: any) => p.id !== 101 && !p.alasan?.includes('Keperluan Keluarga')
-          );
-        }
-      }
-      return [];
-    } catch {
-      return [];
-    }
-  });
+  const [pengajuan, setPengajuan] = useState<PengajuanCuti[]>(readStoredCuti);
 
   const [pesan, setPesan] = useState('');
   const [errorPesan, setErrorPesan] = useState('');
@@ -83,32 +85,30 @@ export const CutiPage = () => {
 
   // Real-time synchronization dengan data pengajuan
   const syncFromStorage = () => {
-    try {
-      const saved = localStorage.getItem('sim_pengajuan_cuti');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const valid = parsed.filter(
-            (p: any) => p.id !== 101 && !p.alasan?.includes('Keperluan Keluarga')
-          );
-          setPengajuan(valid);
-        }
-      }
-    } catch {
-      // ignore
-    }
+    setPengajuan(readStoredCuti());
   };
 
   useEffect(() => {
-    syncFromStorage();
+    const initialTimer = window.setTimeout(syncFromStorage, 0);
     const handleStorage = () => syncFromStorage();
     window.addEventListener('storage', handleStorage);
     const interval = setInterval(syncFromStorage, 2500);
     return () => {
+      window.clearTimeout(initialTimer);
       window.removeEventListener('storage', handleStorage);
       clearInterval(interval);
     };
   }, []);
+
+  const myPengajuan = useMemo(() => {
+    if (!user) return [];
+    const currentNip = (user.nip || '').trim();
+    const currentNama = (user.nama || '').trim().toLowerCase();
+    return pengajuan.filter((item) => {
+      if (currentNip && currentNip !== '-' && item.nip.trim() === currentNip) return true;
+      return Boolean(currentNama && item.nama.trim().toLowerCase() === currentNama);
+    });
+  }, [pengajuan, user]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -307,7 +307,7 @@ export const CutiPage = () => {
             </div>
 
             <div className="mt-5 space-y-3 max-h-[500px] overflow-y-auto pr-1">
-              {pengajuan.map((item) => (
+              {myPengajuan.map((item) => (
                 <div
                   key={item.id}
                   className={`rounded-xl border p-4 space-y-2.5 transition-all ${
@@ -378,7 +378,7 @@ export const CutiPage = () => {
                 </div>
               ))}
 
-              {pengajuan.length === 0 && (
+              {myPengajuan.length === 0 && (
                 <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-400 space-y-1">
                   <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                   <p className="font-semibold text-slate-600">Belum ada riwayat permohonan</p>
