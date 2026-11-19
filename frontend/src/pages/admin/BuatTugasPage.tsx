@@ -265,7 +265,26 @@ export const BuatTugasPage = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nomor Surat</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">Nomor Surat</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const year = new Date().getFullYear();
+                      const prefix = `DRAFT-ST/${formData.unitKerja}/${year}/`;
+                      let seq = allTasks.length + 1;
+                      let candidate = `${prefix}${String(seq).padStart(3, '0')}`;
+                      while (allTasks.some((t) => t.nomorSurat.trim().toLowerCase() === candidate.toLowerCase())) {
+                        seq += 1;
+                        candidate = `${prefix}${String(seq).padStart(3, '0')}`;
+                      }
+                      setFormData({ ...formData, nomorSurat: candidate });
+                    }}
+                    className="text-[11px] font-semibold text-[#5D87FF] hover:underline cursor-pointer"
+                  >
+                    Generate Otomatis
+                  </button>
+                </div>
                 <input
                   type="text"
                   required
@@ -273,6 +292,14 @@ export const BuatTugasPage = () => {
                   onChange={(e) => setFormData({ ...formData, nomorSurat: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors"
                 />
+                {formData.nomorSurat.trim() &&
+                  allTasks.some(
+                    (t) => t.nomorSurat.trim().toLowerCase() === formData.nomorSurat.trim().toLowerCase(),
+                  ) && (
+                    <p className="mt-1 text-[11px] font-semibold text-amber-700">
+                      Nomor surat ini sudah digunakan pada tugas lain. Klik &ldquo;Generate Otomatis&rdquo; atau ubah nomor.
+                    </p>
+                  )}
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Kategori Template SPT</label>

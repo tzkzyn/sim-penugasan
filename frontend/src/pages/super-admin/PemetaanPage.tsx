@@ -33,31 +33,28 @@ export const PemetaanPage = () => {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <MapPin className="w-7 h-7 text-blue-600" />
-            <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Visualisasi Pemetaan Lokasi Penugasan Pegawai</h2>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-1 pt-1">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+            <MapPin className="w-4 h-4" />
           </div>
-          <p className="text-slate-500 text-sm mt-1">
-            Pemantauan lokasi penugasan tiap-tiap pegawai dari unit kerja yang berbeda-beda secara realtime berbasis peta interaktif.
-          </p>
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Pemetaan Lokasi Penugasan Pegawai</h2>
         </div>
 
         {/* Quick Stats Badges */}
-        <div className="flex items-center gap-3">
-          <div className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl text-center">
-            <span className="text-xs text-emerald-700 font-medium block">Penugasan Aktif</span>
-            <span className="text-lg font-extrabold text-emerald-800">{totalOrangAktif} Orang</span>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="bg-white border border-slate-200/80 px-4 py-2 rounded-xl text-center shadow-xs">
+            <span className="text-[11px] text-emerald-600 font-semibold block">Penugasan Aktif</span>
+            <span className="text-base font-bold text-slate-900">{totalOrangAktif} Orang</span>
           </div>
-          <div className="bg-amber-50 border border-amber-200 px-4 py-2 rounded-xl text-center">
-            <span className="text-xs text-amber-700 font-medium block">Jadwal Mendatang</span>
-            <span className="text-lg font-extrabold text-amber-800">{totalOrangMendatang} Orang</span>
+          <div className="bg-white border border-slate-200/80 px-4 py-2 rounded-xl text-center shadow-xs">
+            <span className="text-[11px] text-amber-600 font-semibold block">Jadwal Mendatang</span>
+            <span className="text-base font-bold text-slate-900">{totalOrangMendatang} Orang</span>
           </div>
-          <div className="bg-blue-50 border border-blue-200 px-4 py-2 rounded-xl text-center">
-            <span className="text-xs text-blue-700 font-medium block">Total Ditugaskan</span>
-            <span className="text-lg font-extrabold text-blue-800">{totalOrangDitugaskan} Orang</span>
+          <div className="bg-white border border-slate-200/80 px-4 py-2 rounded-xl text-center shadow-xs">
+            <span className="text-[11px] text-[#5D87FF] font-semibold block">Total Ditugaskan</span>
+            <span className="text-base font-bold text-slate-900">{totalOrangDitugaskan} Orang</span>
           </div>
         </div>
       </div>

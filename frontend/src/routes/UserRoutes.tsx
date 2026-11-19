@@ -11,6 +11,7 @@ import { NotifikasiPage } from '@/pages/user/NotifikasiPage';
 import { SimpananPage } from '@/pages/user/SimpananPage';
 import { ProfilePage } from '@/pages/user/ProfilePage';
 import { PemetaanPage } from '@/pages/super-admin/PemetaanPage';
+import { ArsipSuratLaporanPage } from '@/pages/shared/ArsipSuratLaporanPage';
 
 export const UserRoutes = () => {
   return (
@@ -33,6 +34,7 @@ export const UserRoutes = () => {
       <Route path="upload-surat" element={<UploadSuratPage />} />
       <Route path="status-approval" element={<StatusApprovalPage />} />
       <Route path="pemetaan" element={<PemetaanPage />} />
+      <Route path="arsip" element={<ArsipSuratLaporanPage />} />
       <Route path="notifikasi" element={<NotifikasiPage />} />
       <Route path="simpanan" element={<SimpananPage />} />
       <Route path="profile" element={<ProfilePage />} />

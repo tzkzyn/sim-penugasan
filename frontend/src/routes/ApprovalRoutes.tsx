@@ -6,6 +6,7 @@ import { SuratTugasPage } from '@/pages/approval/SuratTugasPage';
 import { RiwayatApprovalPage } from '@/pages/approval/RiwayatApprovalPage';
 import { NotifikasiPage } from '@/pages/approval/NotifikasiPage';
 import { ProfilePage } from '@/pages/approval/ProfilePage';
+import { ArsipSuratLaporanPage } from '@/pages/shared/ArsipSuratLaporanPage';
 
 export const ApprovalRoutes = () => {
   return (
@@ -16,6 +17,7 @@ export const ApprovalRoutes = () => {
       <Route path="approval-tugas" element={<ApprovalTugasPage />} />
       <Route path="approval-cuti" element={<ApprovalCutiPage />} />
       <Route path="surat-tugas" element={<SuratTugasPage />} />
+      <Route path="arsip" element={<ArsipSuratLaporanPage />} />
       <Route path="template-surat" element={<Navigate to="/approval/dashboard" replace />} />
       <Route path="riwayat-approval" element={<RiwayatApprovalPage />} />
       <Route path="notifikasi" element={<NotifikasiPage />} />

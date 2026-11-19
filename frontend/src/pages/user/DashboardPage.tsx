@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { formatDate } from '@/utils/formatter';
 import { useAuth } from '@/hooks/useAuth';
 import { usePenugasan } from '@/context/PenugasanContext';
-import { CalendarWidget } from '@/components/ui/CalendarWidget';
 import { KalenderRekapDinasModal } from '@/components/ui/KalenderRekapDinasModal';
 import { PenugasanMap } from '@/components/map/PenugasanMap';
 import { getPegawaiDinasStats } from '@/utils/penugasanHelpers';
@@ -27,6 +26,9 @@ import {
   CheckCircle2,
   BarChart3,
   CalendarDays,
+  UploadCloud,
+  Archive,
+  ArrowRight,
 } from 'lucide-react';
 import { DashboardAjuanDetailModal } from '@/components/ui/DashboardAjuanDetailModal';
 
@@ -35,7 +37,6 @@ export const DashboardPage = () => {
   const { myTasks: tasks } = usePenugasan();
   const todayFormatted = formatDate(new Date().toISOString());
 
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedAjuan, setSelectedAjuan] = useState<AjuanSuratTugas | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isKalenderRekapOpen, setIsKalenderRekapOpen] = useState(false);
@@ -55,12 +56,7 @@ export const DashboardPage = () => {
     status: item.status === 'SURAT_TERBIT' ? 'AKTIF' : item.status === 'DITOLAK' ? 'SELESAI' : 'MENDATANG',
     markerType: 'approvedAjuan',
   }));
-  const activeLocations = ajuanMapLocations.filter((l) => l.status === 'AKTIF');
-  const recentAjuan = tasks.filter((item) => {
-    if (!selectedDate) return true;
-    const itemDate = new Date(item.tanggalMulai);
-    return itemDate.toDateString() === selectedDate.toDateString();
-  }).slice(0, 8);
+  const recentAjuan = tasks.slice(0, 8);
   const recentPresensi = dummyPresensiPegawaiLain.slice(0, 8);
 
   const draftApprovalCount = useMemo(() => {
@@ -68,6 +64,27 @@ export const DashboardPage = () => {
       (t) => t.status === 'DRAFT' || t.status === 'VERIFIKASI_SUBBAGIAN' || t.status === 'PERSETUJUAN_PIMPINAN'
     ).length;
   }, [tasks]);
+
+  const taskProgress = useMemo(() => {
+    const total = tasks.length;
+    const selesai = tasks.filter((t) => Boolean(t.fileLaporanUrl || t.fileLaporanNama || t.tanggalLaporan)).length;
+    const terbit = tasks.filter((t) => t.status === 'SURAT_TERBIT').length;
+    const ditolak = tasks.filter((t) => t.status === 'DITOLAK').length;
+    const persentaseSelesai = total > 0 ? Math.round((selesai / total) * 100) : 0;
+    return { total, selesai, terbit, ditolak, persentaseSelesai };
+  }, [tasks]);
+
+  const belumLaporanTasks = useMemo(
+    () =>
+      tasks.filter(
+        (t) =>
+          t.status === 'SURAT_TERBIT' &&
+          !t.fileLaporanUrl &&
+          !t.fileLaporanNama &&
+          !t.tanggalLaporan,
+      ),
+    [tasks],
+  );
 
   const myDinasStats = useMemo(() => {
     if (!user) return { totalDinas: 0, dinasMingguIni: 0, dinasBulanIni: 0 };
@@ -96,235 +113,307 @@ export const DashboardPage = () => {
   return (
     <div className="p-2 sm:p-4 space-y-6 max-w-7xl mx-auto">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#2563EB] text-white p-7 rounded-2xl shadow-[0_14px_34px_-12px_rgba(29,78,216,0.45)] relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2 z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/15 text-blue-50 rounded-full text-xs font-semibold backdrop-blur-md border border-white/25">
+      <div className="bg-white border border-slate-200/80 text-slate-800 p-7 rounded-2xl shadow-[0_2px_12px_-4px_rgba(15,23,42,0.06)] flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#ECF2FF] text-[#5D87FF] rounded-full text-xs font-semibold border border-[#5D87FF]/20">
             <Building className="w-3.5 h-3.5" />
             <span>{user?.unitKerja} • {user?.role}</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Selamat Datang, <span className="text-sky-200">{user?.nama}</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Selamat Datang, <span className="text-[#5D87FF]">{user?.nama}</span>
           </h2>
-          <p className="text-blue-100/90 text-sm max-w-xl">
+          <p className="text-slate-500 text-sm max-w-xl">
             Sistem Informasi Manajemen Penugasan, Presensi Pegawai, & Visualisasi Pemetaan Lokasi Terpadu.
           </p>
         </div>
 
-        <div className="z-10 bg-white/15 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/25 text-right font-mono text-xs sm:text-sm">
-          <span className="text-blue-100 block text-[11px] font-sans">Hari ini:</span>
-          <span className="font-bold text-white text-base">{todayFormatted}</span>
-        </div>
-
-        {/* Decorative Circles */}
-        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute right-40 top-0 w-32 h-32 bg-sky-300/15 rounded-full blur-xl" />
-      </div>
-
-      {/* Executive Stats Cards (Atas) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-        <div className="relative overflow-hidden bg-white p-5 pl-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] transition-all flex items-center gap-4">
-          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-rose-400" />
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
-            <FileText className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-xs font-semibold text-slate-500 block">Penugasan Aktif</span>
-            <span className="text-2xl font-black text-slate-800 leading-tight">{activeLocations.length}</span>
-            <span className="text-[11px] text-slate-400 block">Pegawai On-Site di Lapangan</span>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden bg-white p-5 pl-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] transition-all flex items-center gap-4">
-          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-emerald-500" />
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-            <CalendarCheck className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-xs font-semibold text-slate-500 block">Presensi Hari Ini</span>
-            <span className="text-2xl font-black text-slate-800 leading-tight">{dummyPresensiPribadi.persentaseKehadiran}%</span>
-            <span className="text-[11px] text-emerald-600 font-medium block">Tingkat Kehadiran Instansi</span>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden bg-white p-5 pl-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] transition-all flex items-center gap-4">
-          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-amber-400" />
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-xs font-semibold text-slate-500 block">Draft Butuh Approval</span>
-            <span className="text-2xl font-black text-slate-800 leading-tight">{draftApprovalCount}</span>
-            <span className="text-[11px] text-slate-400 block">Ajuan Tahap Verifikasi</span>
-          </div>
+        <div className="bg-slate-50/80 px-5 py-3 rounded-2xl border border-slate-200/80 text-right font-mono text-xs sm:text-sm shrink-0">
+          <span className="text-slate-500 block text-[11px] font-sans">Hari ini:</span>
+          <span className="font-bold text-slate-800 text-base">{todayFormatted}</span>
         </div>
       </div>
 
-      {/* Rekapan Frekuensi Dinas Akun Anda (Bawah) */}
-      <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center font-bold shrink-0">
-              <BarChart3 className="w-5 h-5" />
+      {/* Pintasan Menu Utama (Ramah Pengguna, Langsung Klik dari Dashboard) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Link
+          to="/user/tugas/pengajuan"
+          className="group bg-white p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-[#5D87FF] hover:shadow-md transition-all flex flex-col justify-between gap-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#5D87FF] group-hover:translate-x-0.5 transition-transform">
+              Buka <ArrowRight className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div>
+            <p className="text-base font-bold text-slate-900">Surat Tugas Saya</p>
+            <p className="text-xs text-slate-500 mt-0.5">Lihat &amp; cetak surat perintah tugas</p>
+            <p className="text-sm font-bold text-[#5D87FF] mt-2">{taskProgress.terbit} Surat Terbit</p>
+          </div>
+        </Link>
+
+        <Link
+          to="/user/upload-surat"
+          className="group bg-white p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-emerald-500 hover:shadow-md transition-all flex flex-col justify-between gap-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <UploadCloud className="w-5 h-5" />
+            </div>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 group-hover:translate-x-0.5 transition-transform">
+              Buka <ArrowRight className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div>
+            <p className="text-base font-bold text-slate-900">Upload Laporan</p>
+            <p className="text-xs text-slate-500 mt-0.5">Kirim laporan hasil tugas Anda</p>
+            <p className="text-sm font-bold text-emerald-600 mt-2">
+              {taskProgress.selesai} / {taskProgress.total} Dilaporkan
+            </p>
+          </div>
+        </Link>
+
+        <Link
+          to="/user/arsip"
+          className="group bg-white p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-amber-500 hover:shadow-md transition-all flex flex-col justify-between gap-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <Archive className="w-5 h-5" />
+            </div>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 group-hover:translate-x-0.5 transition-transform">
+              Buka <ArrowRight className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div>
+            <p className="text-base font-bold text-slate-900">Arsip Surat &amp; Laporan</p>
+            <p className="text-xs text-slate-500 mt-0.5">Lihat &amp; unduh dokumen Anda</p>
+            <p className="text-sm font-bold text-amber-600 mt-2">{taskProgress.total} Arsip Tersedia</p>
+          </div>
+        </Link>
+
+        <Link
+          to="/user/absensi/kehadiran"
+          className="group bg-white p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-rose-500 hover:shadow-md transition-all flex flex-col justify-between gap-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
+              <CalendarCheck className="w-5 h-5" />
+            </div>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 group-hover:translate-x-0.5 transition-transform">
+              Buka <ArrowRight className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div>
+            <p className="text-base font-bold text-slate-900">Absensi &amp; Izin / Cuti</p>
+            <p className="text-xs text-slate-500 mt-0.5">Catat kehadiran atau ajukan izin</p>
+            <p className="text-sm font-bold text-rose-600 mt-2">
+              {dummyPresensiPribadi.persentaseKehadiran}% Kehadiran
+            </p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Pengingat Tugas Belum Dilaporkan */}
+      {belumLaporanTasks.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-amber-200/80 bg-amber-50/70 px-5 py-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <UploadCloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-800">
-                Rekapan Frekuensi Dinas Anda
-              </h3>
-              <p className="text-xs text-slate-500">
-                Statistik penugasan resmi khusus akun <strong>{user?.nama || 'Anda'}</strong> ({user?.nip || '-'})
+              <p className="text-sm font-bold text-amber-900">
+                Ada {belumLaporanTasks.length} surat tugas yang belum diunggah laporannya
+              </p>
+              <p className="text-xs text-amber-800/80 mt-0.5">
+                {belumLaporanTasks.length === 1
+                  ? `Tugas "${belumLaporanTasks[0].perihal}" (${belumLaporanTasks[0].nomorSurat}) menunggu laporan hasil Anda.`
+                  : 'Segera unggah laporan hasil pelaksanaan tugas setelah kegiatan selesai.'}
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsKalenderRekapOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1D4ED8] hover:bg-[#1E40AF] text-white text-xs font-bold rounded-full shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+          <Link
+            to={
+              belumLaporanTasks.length === 1
+                ? `/user/upload-surat?id=${encodeURIComponent(belumLaporanTasks[0].id)}`
+                : '/user/upload-surat'
+            }
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition shrink-0"
           >
-            <CalendarDays className="w-4 h-4" />
-            <span>Buka Kalender Khusus Rekapan</span>
-          </button>
+            Upload Laporan <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
+
+      {/* Progres & Capaian Tugas Saya */}
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-slate-800">Progres Tugas Saya</h3>
+            <p className="text-xs text-slate-500">
+              Ringkasan tugas yang sudah dikerjakan (dilaporkan) dari total {taskProgress.total} penugasan Anda
+            </p>
+          </div>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+              taskProgress.selesai === 0
+                ? 'bg-rose-50 text-rose-600'
+                : 'bg-[#ECF2FF] text-[#5D87FF]'
+            }`}
+          >
+            {taskProgress.persentaseSelesai}% Selesai
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-[#F8FAFD] p-4 pl-5 flex items-center gap-3.5">
-            <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-[#1D4ED8]" />
-            <div className="w-10 h-10 rounded-xl bg-blue-100/70 text-[#1D4ED8] flex items-center justify-center shrink-0">
-              <BarChart3 className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold text-slate-500 truncate">
-                Frekuensi Dinas ({user?.nama?.split(' ')[0] || 'Akun'})
-              </p>
-              <p className="text-xl font-black text-slate-800 leading-tight">
-                {myDinasStats.totalDinas}x Dinas
-              </p>
-              <p className="text-[11px] text-[#1D4ED8] font-medium truncate">
-                Akumulasi seluruh penugasan
-              </p>
-            </div>
-          </div>
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${
+              taskProgress.selesai === 0 ? 'bg-rose-500' : 'bg-[#5D87FF]'
+            }`}
+            style={{ width: `${taskProgress.persentaseSelesai}%` }}
+          />
+        </div>
 
-          <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-[#F8FAFD] p-4 pl-5 flex items-center gap-3.5">
-            <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-emerald-500" />
-            <div className="w-10 h-10 rounded-xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center shrink-0">
-              <CalendarDays className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold text-slate-500 truncate">
-                Rekap Minggu Ini
-              </p>
-              <p className="text-xl font-black text-slate-800 leading-tight">
-                {myDinasStats.dinasMingguIni}x Dinas
-              </p>
-              <p className="text-[11px] text-emerald-600 font-medium truncate">
-                Aktif pada minggu berjalan
-              </p>
-            </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <div className="rounded-xl bg-slate-50/80 border border-slate-200/60 px-4 py-3">
+            <p className="text-[11px] font-medium text-slate-500">Total Tugas</p>
+            <p className="text-lg font-bold text-slate-900 mt-0.5">{taskProgress.total}</p>
           </div>
-
-          <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-[#F8FAFD] p-4 pl-5 flex items-center gap-3.5">
-            <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-amber-400" />
-            <div className="w-10 h-10 rounded-xl bg-amber-100/70 text-amber-600 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold text-slate-500 truncate">
-                Rekap Bulan ({currentMonthLabel})
-              </p>
-              <p className="text-xl font-black text-slate-800 leading-tight">
-                {myDinasStats.dinasBulanIni}x Dinas
-              </p>
-              <p className="text-[11px] text-amber-600 font-medium truncate">
-                Aktif pada bulan berjalan
-              </p>
-            </div>
+          <div
+            className={`rounded-xl border px-4 py-3 ${
+              taskProgress.selesai === 0
+                ? 'bg-rose-50/70 border-rose-200/70'
+                : 'bg-emerald-50/60 border-emerald-200/60'
+            }`}
+          >
+            <p
+              className={`text-[11px] font-medium ${
+                taskProgress.selesai === 0 ? 'text-rose-600' : 'text-emerald-700'
+              }`}
+            >
+              Sudah Dikerjakan
+            </p>
+            <p
+              className={`text-lg font-bold mt-0.5 ${
+                taskProgress.selesai === 0 ? 'text-rose-600' : 'text-emerald-700'
+              }`}
+            >
+              {taskProgress.selesai}
+            </p>
+          </div>
+          <div className="rounded-xl bg-[#ECF2FF]/70 border border-[#5D87FF]/20 px-4 py-3">
+            <p className="text-[11px] font-medium text-[#5D87FF]">Surat Terbit</p>
+            <p className="text-lg font-bold text-[#5D87FF] mt-0.5">{taskProgress.terbit}</p>
+          </div>
+          <div className="rounded-xl bg-amber-50/60 border border-amber-200/60 px-4 py-3">
+            <p className="text-[11px] font-medium text-amber-700">Dalam Proses</p>
+            <p className="text-lg font-bold text-amber-700 mt-0.5">{draftApprovalCount}</p>
           </div>
         </div>
       </div>
 
-      {/* Baris Utama 2 Kolom: Aktivitas Ajuan Terbaru + Kalender */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Ajuan Surat Tugas Terbaru (List Vertikal Rapi) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] flex flex-col">
-          <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center">
-                <FileText className="w-4 h-4" />
-              </div>
-              <h3 className="font-bold text-slate-800 text-base">
-                Proses Ajuan Surat Tugas Terbaru
-              </h3>
-            </div>
-            <Link
-              to="/tugas"
-              className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50/70 px-3 py-1 text-xs font-bold text-[#1D4ED8] hover:bg-blue-100 transition-colors"
-            >
-              Lihat Semua
-            </Link>
+      {/* Rekapan Frekuensi Dinas Akun Anda (Ringkas) */}
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center font-bold shrink-0">
+            <BarChart3 className="w-5 h-5" />
           </div>
-
-          <div className="space-y-3 flex-1 overflow-y-auto max-h-[340px] pr-1">
-            {recentAjuan.map((item) => {
-              const unitColor = UNIT_COLORS[item.unitKerja] || { bg: 'bg-slate-100', text: 'text-slate-800' };
-              const statusIsApproved = item.status === 'SURAT_TERBIT';
-              const statusIsRejected = item.status === 'DITOLAK';
-              const statusLabel = statusIsApproved ? 'DiApprove' : statusIsRejected ? 'Ditolak' : 'Diproses';
-              const statusBadgeClass = statusIsApproved
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : statusIsRejected
-                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                  : 'bg-amber-50 text-amber-700 border border-amber-200';
-
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedAjuan(item);
-                    setIsModalOpen(true);
-                  }}
-                  className="w-full rounded-xl border border-slate-100 bg-[#F8FAFD] p-4 text-left transition-all hover:border-blue-200 hover:bg-white hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-mono text-xs font-bold text-[#1D4ED8] truncate">{item.nomorSurat}</span>
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0 ${statusBadgeClass}`}>
-                      {statusIsApproved ? (
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                      ) : statusIsRejected ? (
-                        <X className="w-3 h-3 text-rose-600" />
-                      ) : (
-                        <Clock className="w-3 h-3 text-amber-600" />
-                      )}
-                      {statusLabel}
-                    </span>
-                  </div>
-
-                  <h4 className="mt-1.5 text-sm font-bold text-slate-800 line-clamp-1">{item.perihal}</h4>
-
-                  <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${unitColor.bg} ${unitColor.text}`}>
-                      {item.unitKerja}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span className="line-clamp-1">{formatLokasiDisplay(item.lokasiPenugasan)}</span>
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-            {recentAjuan.length === 0 && (
-              <div className="py-12 text-center text-xs text-slate-400">
-                Belum ada proses ajuan surat tugas terbaru.
-              </div>
-            )}
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-slate-800">
+              Rekapan Frekuensi Dinas Anda
+            </h3>
+            <p className="text-xs text-slate-500">
+              Total <strong className="text-slate-800">{myDinasStats.totalDinas}x</strong> · Minggu Ini <strong className="text-emerald-600">{myDinasStats.dinasMingguIni}x</strong> · Bulan {currentMonthLabel} <strong className="text-amber-600">{myDinasStats.dinasBulanIni}x</strong>
+            </p>
           </div>
         </div>
 
-        {/* Calendar Widget */}
-        <div className="lg:col-span-5">
-          <CalendarWidget selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+        <button
+          type="button"
+          onClick={() => setIsKalenderRekapOpen(true)}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#5D87FF] hover:bg-[#4A75F2] text-white text-xs font-semibold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+        >
+          <CalendarDays className="w-4 h-4" />
+          <span>Buka Kalender Khusus Rekapan</span>
+        </button>
+      </div>
+
+      {/* Ajuan Surat Tugas Terbaru (Full-width) */}
+      <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] flex flex-col">
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center">
+              <FileText className="w-4 h-4" />
+            </div>
+            <h3 className="font-bold text-slate-800 text-base">
+              Proses Ajuan Surat Tugas Terbaru
+            </h3>
+          </div>
+          <Link
+            to="/tugas"
+            className="inline-flex items-center gap-1 rounded-full border border-[#5D87FF]/25 bg-[#ECF2FF] px-3 py-1 text-xs font-bold text-[#5D87FF] hover:bg-blue-100 transition-colors"
+          >
+            Lihat Semua
+          </Link>
+        </div>
+
+        <div className="space-y-3 flex-1 overflow-y-auto max-h-[340px] pr-1">
+          {recentAjuan.map((item) => {
+            const unitColor = UNIT_COLORS[item.unitKerja] || { bg: 'bg-slate-100', text: 'text-slate-800' };
+            const statusIsApproved = item.status === 'SURAT_TERBIT';
+            const statusIsRejected = item.status === 'DITOLAK';
+            const statusLabel = statusIsApproved ? 'DiApprove' : statusIsRejected ? 'Ditolak' : 'Diproses';
+            const statusBadgeClass = statusIsApproved
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : statusIsRejected
+                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                : 'bg-amber-50 text-amber-700 border border-amber-200';
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setSelectedAjuan(item);
+                  setIsModalOpen(true);
+                }}
+                className="w-full rounded-xl border border-slate-100 bg-[#F8FAFD] p-4 text-left transition-all hover:border-[#5D87FF]/30 hover:bg-white hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#5D87FF]/30 cursor-pointer"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-xs font-bold text-[#5D87FF] truncate">{item.nomorSurat}</span>
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0 ${statusBadgeClass}`}>
+                    {statusIsApproved ? (
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    ) : statusIsRejected ? (
+                      <X className="w-3 h-3 text-rose-600" />
+                    ) : (
+                      <Clock className="w-3 h-3 text-amber-600" />
+                    )}
+                    {statusLabel}
+                  </span>
+                </div>
+
+                <h4 className="mt-1.5 text-sm font-bold text-slate-800 line-clamp-1">{item.perihal}</h4>
+
+                <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${unitColor.bg} ${unitColor.text}`}>
+                    {item.unitKerja}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                    <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span className="line-clamp-1">{formatLokasiDisplay(item.lokasiPenugasan)}</span>
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+          {recentAjuan.length === 0 && (
+            <div className="py-12 text-center text-xs text-slate-400">
+              Belum ada proses ajuan surat tugas terbaru.
+            </div>
+          )}
         </div>
       </div>
 

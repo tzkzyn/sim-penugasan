@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
 import { usePenugasan } from '@/context/PenugasanContext';
 import { UNIT_COLORS } from '@/data/dummyData';
 import type { AjuanSuratTugas, UnitKerjaType } from '@/types';
@@ -12,21 +11,17 @@ import {
 } from '@/utils/penugasanHelpers';
 import {
   FileText,
-  Plus,
   MapPin,
   Filter,
   Eye,
   X,
-  MoreHorizontal,
   Users,
   ChevronDown,
   Printer,
-  FileEdit,
   AlertTriangle,
   Download,
 } from 'lucide-react';
 import { CetakSuratTugasModal } from '@/components/ui/CetakSuratTugasModal';
-import { UserDraftAjuanModal } from '@/components/user/UserDraftAjuanModal';
 import {
   AjuanStatusBadge,
   PegawaiDitugaskanModal,
@@ -96,21 +91,10 @@ const CheckboxDropdown = ({
 );
 
 export const TugasPage = () => {
-  const { user } = useAuth();
-  const { tasks: allTasks, myTasks: ajuanList, pegawaiList } = usePenugasan();
-
-  const currentPegawai = user || pegawaiList[0];
-  const pegawaiOptions = useMemo(
-    () =>
-      pegawaiList.some((p) => p.id === currentPegawai?.id)
-        ? pegawaiList.map((p) => (p.id === currentPegawai?.id ? currentPegawai : p))
-        : currentPegawai
-          ? [currentPegawai, ...pegawaiList]
-          : pegawaiList,
-    [pegawaiList, currentPegawai],
-  );
+  const { tasks: allTasks, myTasks: ajuanList } = usePenugasan();
 
   const [activeTab, setActiveTab] = useState<'DAFTAR' | 'WORKFLOW'>('DAFTAR');
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [selectedUnits, setSelectedUnits] = useState<UnitKerjaType[]>([]);
   const [isUnitFilterOpen, setIsUnitFilterOpen] = useState(false);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
@@ -120,24 +104,18 @@ export const TugasPage = () => {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedSpecificLocations, setSelectedSpecificLocations] = useState<string[]>([]);
 
+  const activeFilterCount =
+    selectedUnits.length +
+    selectedStatuses.length +
+    selectedApplicants.length +
+    selectedAssignees.length +
+    selectedLocations.length +
+    selectedSpecificLocations.length;
+
   const [selectedAjuan, setSelectedAjuan] = useState<AjuanSuratTugas | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPegawaiAjuan, setSelectedPegawaiAjuan] = useState<AjuanSuratTugas | null>(null);
-  const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [suratToPrint, setSuratToPrint] = useState<AjuanSuratTugas | null>(null);
-
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<AjuanSuratTugas | null>(null);
-
-  const openCreateModal = () => {
-    setEditingTask(null);
-    setIsFormModalOpen(true);
-  };
-
-  const openEditAndResendModal = (item: AjuanSuratTugas) => {
-    setEditingTask(item);
-    setIsFormModalOpen(true);
-  };
 
   const filteredAjuan = ajuanList.filter((item) => {
     const matchesUnit = selectedUnits.length === 0 || selectedUnits.includes(item.unitKerja);
@@ -230,174 +208,226 @@ export const TugasPage = () => {
   return (
     <div className="p-2 sm:p-4 space-y-5 max-w-7xl mx-auto">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)]">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center shrink-0">
-            <FileText className="w-6 h-6" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 pt-1">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Manajemen Penugasan Pegawai</h2>
-            <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-              Kelola proses ajuan surat tugas, alur persetujuan draft penugasan, dan pelacakan status penugasan instansi.
-            </p>
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Daftar Surat Tugas Saya</h2>
+            <p className="text-xs text-slate-500">Surat perintah tugas yang diterbitkan dan ditugaskan kepada Anda oleh Admin.</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1D4ED8] hover:bg-[#1E40AF] text-white text-sm font-bold rounded-full shadow-md shadow-blue-600/20 transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Buat Draft Ajuan ST</span>
-        </button>
       </div>
 
-      {/* Horizontal Filter Bar + Full-Width Table */}
-      <div className="space-y-5">
-        <section className="w-full rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+      {/* Unified Filter Toolbar + Table Card */}
+      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] overflow-hidden">
+        <div className="p-5 border-b border-slate-100 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center bg-[#EEF3FB] p-1 rounded-full text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('DAFTAR')}
-                  className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${
-                    activeTab === 'DAFTAR'
-                      ? 'bg-white text-[#1D4ED8] font-bold shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Daftar Proses Ajuan ST ({ajuanList.length})
-                </button>
-              </div>
-              <span className="text-xs text-slate-500">
-                Menampilkan <strong className="text-slate-800">{filteredAjuan.length}</strong> dari {ajuanList.length} data
+              <button
+                type="button"
+                onClick={() => setActiveTab('DAFTAR')}
+                className={`text-base font-bold transition-colors cursor-pointer ${
+                  activeTab === 'DAFTAR' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Surat Tugas Diterima ({ajuanList.length})
+              </button>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                {filteredAjuan.length} dari {ajuanList.length} data
               </span>
             </div>
 
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-3.5 py-1.5 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-              Reset Filter
-            </button>
-          </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Quick Filter: Unit Kerja */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUnitFilterOpen((isOpen) => !isOpen);
+                    setOpenFilter(null);
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                    selectedUnits.length > 0
+                      ? 'border-[#5D87FF]/40 bg-[#ECF2FF] text-[#5D87FF]'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                  }`}
+                  aria-expanded={isUnitFilterOpen}
+                >
+                  <Filter className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    {selectedUnits.length === 0
+                      ? 'Unit Kerja'
+                      : selectedUnits.length === 1
+                        ? selectedUnits[0]
+                        : `${selectedUnits.length} Unit`}
+                  </span>
+                  <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${isUnitFilterOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div className="relative">
-              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Unit Kerja</p>
+                {isUnitFilterOpen && (
+                  <div
+                    className="absolute right-0 top-full z-40 mt-2 w-56 rounded-xl border border-slate-200/80 bg-white p-2 shadow-xl"
+                    onMouseLeave={() => setIsUnitFilterOpen(false)}
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-2">
+                      <span className="text-xs font-bold text-slate-700">Filter Unit Kerja</span>
+                      {selectedUnits.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUnits([])}
+                          className="text-[11px] font-semibold text-[#5D87FF] hover:underline cursor-pointer"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-1 pt-2">
+                      {unitOptions.map((unit) => (
+                        <label key={unit} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-700 hover:bg-[#ECF2FF]/60">
+                          <input
+                            type="checkbox"
+                            checked={selectedUnits.includes(unit)}
+                            onChange={() => toggleUnitFilter(unit)}
+                            className="h-4 w-4 rounded border-slate-300 accent-[#5D87FF]"
+                          />
+                          <span>{unit}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Filter: Status */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenFilter(openFilter === 'status' ? null : 'status');
+                    setIsUnitFilterOpen(false);
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                    selectedStatuses.length > 0
+                      ? 'border-[#5D87FF]/40 bg-[#ECF2FF] text-[#5D87FF]'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                  }`}
+                  aria-expanded={openFilter === 'status'}
+                >
+                  <span>
+                    {selectedStatuses.length === 0 ? 'Status' : `${selectedStatuses.length} Status`}
+                  </span>
+                  <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${openFilter === 'status' ? 'rotate-180' : ''}`} />
+                </button>
+                {openFilter === 'status' && (
+                  <div
+                    className="absolute right-0 top-full z-40 mt-2 max-h-72 w-56 overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-2 shadow-xl"
+                    onMouseLeave={() => setOpenFilter(null)}
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-2">
+                      <span className="text-xs font-bold text-slate-700">Status</span>
+                      {selectedStatuses.length > 0 && (
+                        <button type="button" onClick={() => setSelectedStatuses([])} className="text-[11px] font-semibold text-[#5D87FF] hover:underline cursor-pointer">
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-1 pt-2">
+                      {statusOptions.map((option) => (
+                        <label key={option.value} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-700 hover:bg-[#ECF2FF]/60">
+                          <input
+                            type="checkbox"
+                            checked={selectedStatuses.includes(option.value)}
+                            onChange={() => toggleFilterValue(setSelectedStatuses, option.value)}
+                            className="h-4 w-4 rounded border-slate-300 accent-[#5D87FF]"
+                          />
+                          <span className="truncate">{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Toggle Filter Lanjutan */}
               <button
                 type="button"
-                onClick={() => setIsUnitFilterOpen((isOpen) => !isOpen)}
-                className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-[#F8FAFD] px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-blue-300 hover:bg-white cursor-pointer"
-                aria-expanded={isUnitFilterOpen}
+                onClick={() => setShowMoreFilters((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                  showMoreFilters ||
+                  selectedApplicants.length + selectedAssignees.length + selectedLocations.length + selectedSpecificLocations.length > 0
+                    ? 'border-[#5D87FF]/40 bg-[#ECF2FF] text-[#5D87FF]'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                }`}
               >
-                <span className="inline-flex items-center gap-1.5 truncate">
-                  <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  {selectedUnits.length === 0
-                    ? 'Semua Unit'
-                    : selectedUnits.length === 1
-                      ? selectedUnits[0]
-                      : `${selectedUnits.length} unit dipilih`}
-                </span>
-                <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform ${isUnitFilterOpen ? 'rotate-180' : ''}`} />
+                <Filter className="h-3.5 w-3.5" />
+                <span>Filter Lainnya</span>
               </button>
 
-              {isUnitFilterOpen && (
-                <div
-                  className="absolute left-0 top-full z-40 mt-2 w-56 rounded-xl border border-slate-100 bg-white p-2 shadow-xl"
-                  onMouseLeave={() => setIsUnitFilterOpen(false)}
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-1 rounded-xl bg-rose-50 border border-rose-200/80 px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-100 cursor-pointer"
                 >
-                  <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-2">
-                    <span className="text-xs font-bold text-slate-700">Filter Unit Kerja</span>
-                    {selectedUnits.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedUnits([])}
-                        className="text-[11px] font-semibold text-[#1D4ED8] hover:underline cursor-pointer"
-                      >
-                        Reset
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-1 pt-2">
-                    {unitOptions.map((unit) => (
-                      <label key={unit} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs text-slate-700 hover:bg-[#F3F6FB]">
-                        <input
-                          type="checkbox"
-                          checked={selectedUnits.includes(unit)}
-                          onChange={() => toggleUnitFilter(unit)}
-                          className="h-4 w-4 rounded border-slate-300 text-blue-600 accent-blue-600 focus:ring-blue-500"
-                        />
-                        <span>{unit}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <p className="border-t border-slate-100 px-2 pt-2 text-[11px] text-slate-400">
-                    Kosongkan untuk semua unit.
-                  </p>
-                </div>
+                  <X className="w-3.5 h-3.5" />
+                  Reset ({activeFilterCount})
+                </button>
               )}
             </div>
-
-            <CheckboxDropdown
-              label="Pengaju"
-              options={applicantOptions}
-              selected={selectedApplicants}
-              isOpen={openFilter === 'applicant'}
-              onToggle={() => setOpenFilter(openFilter === 'applicant' ? null : 'applicant')}
-              onChange={(value) => toggleFilterValue(setSelectedApplicants, value)}
-              onReset={() => setSelectedApplicants([])}
-            />
-            <CheckboxDropdown
-              label="Pelaksana"
-              options={assigneeOptions}
-              selected={selectedAssignees}
-              isOpen={openFilter === 'assignee'}
-              onToggle={() => setOpenFilter(openFilter === 'assignee' ? null : 'assignee')}
-              onChange={(value) => toggleFilterValue(setSelectedAssignees, value)}
-              onReset={() => setSelectedAssignees([])}
-            />
-            <CheckboxDropdown
-              label="Domisili"
-              options={locationOptions}
-              selected={selectedLocations}
-              isOpen={openFilter === 'location'}
-              onToggle={() => setOpenFilter(openFilter === 'location' ? null : 'location')}
-              onChange={(value) => toggleFilterValue(setSelectedLocations, value)}
-              onReset={() => setSelectedLocations([])}
-            />
-            <CheckboxDropdown
-              label="Lokasi"
-              options={specificLocationOptions}
-              selected={selectedSpecificLocations}
-              isOpen={openFilter === 'specific'}
-              onToggle={() => setOpenFilter(openFilter === 'specific' ? null : 'specific')}
-              onChange={(value) => toggleFilterValue(setSelectedSpecificLocations, value)}
-              onReset={() => setSelectedSpecificLocations([])}
-            />
-            <CheckboxDropdown
-              label="Status"
-              options={statusOptions}
-              selected={selectedStatuses}
-              isOpen={openFilter === 'status'}
-              onToggle={() => setOpenFilter(openFilter === 'status' ? null : 'status')}
-              onChange={(value) => toggleFilterValue(setSelectedStatuses, value)}
-              onReset={() => setSelectedStatuses([])}
-            />
           </div>
-        </section>
+
+          {showMoreFilters && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+              <CheckboxDropdown
+                label="Pengaju"
+                options={applicantOptions}
+                selected={selectedApplicants}
+                isOpen={openFilter === 'applicant'}
+                onToggle={() => setOpenFilter(openFilter === 'applicant' ? null : 'applicant')}
+                onChange={(value) => toggleFilterValue(setSelectedApplicants, value)}
+                onReset={() => setSelectedApplicants([])}
+              />
+              <CheckboxDropdown
+                label="Pelaksana"
+                options={assigneeOptions}
+                selected={selectedAssignees}
+                isOpen={openFilter === 'assignee'}
+                onToggle={() => setOpenFilter(openFilter === 'assignee' ? null : 'assignee')}
+                onChange={(value) => toggleFilterValue(setSelectedAssignees, value)}
+                onReset={() => setSelectedAssignees([])}
+              />
+              <CheckboxDropdown
+                label="Domisili"
+                options={locationOptions}
+                selected={selectedLocations}
+                isOpen={openFilter === 'location'}
+                onToggle={() => setOpenFilter(openFilter === 'location' ? null : 'location')}
+                onChange={(value) => toggleFilterValue(setSelectedLocations, value)}
+                onReset={() => setSelectedLocations([])}
+              />
+              <CheckboxDropdown
+                label="Lokasi"
+                options={specificLocationOptions}
+                selected={selectedSpecificLocations}
+                isOpen={openFilter === 'specific'}
+                onToggle={() => setOpenFilter(openFilter === 'specific' ? null : 'specific')}
+                onChange={(value) => toggleFilterValue(setSelectedSpecificLocations, value)}
+                onReset={() => setSelectedSpecificLocations([])}
+              />
+            </div>
+          )}
+        </div>
 
         <div className="min-w-0">
           {activeTab === 'DAFTAR' && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] overflow-hidden">
+            <div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="bg-[#F8FAFD] text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
+                  <thead className="bg-slate-50/70 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
                     <tr>
-                      <th className="px-5 py-3.5">Surat &amp; Pengaju</th>
+                      <th className="px-5 py-3.5">Surat Tugas</th>
                       <th className="px-5 py-3.5">Pelaksana</th>
                       <th className="px-5 py-3.5">Jadwal &amp; Lokasi</th>
                       <th className="px-5 py-3.5">Status</th>
@@ -417,21 +447,18 @@ export const TugasPage = () => {
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                           <td className="px-5 py-4 align-top max-w-sm">
-                            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                              <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/80">
-                                {item.nomorSurat}
-                              </span>
-                              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200/80">
-                                {getKategoriLabel(kategori)}
-                              </span>
+                            <p className="font-semibold text-slate-900 line-clamp-2 leading-snug">{item.perihal}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                              <span className="font-mono font-semibold text-[#5D87FF]">{item.nomorSurat}</span>
+                              <span aria-hidden="true">•</span>
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${unitColor.bg} ${unitColor.text}`}>
                                 {item.unitKerja}
                               </span>
+                              <span aria-hidden="true">•</span>
+                              <span className="text-[11px] font-medium text-slate-500">{getKategoriLabel(kategori)}</span>
                             </div>
-                            <p className="font-semibold text-slate-800 line-clamp-2 leading-snug">{item.perihal}</p>
                             <p className="mt-1 text-xs text-slate-500">
                               Pengaju: <span className="font-medium text-slate-700">{item.pengaju.nama}</span>
-                              {item.pengaju.nip && item.pengaju.nip !== '-' ? ` • ${item.pengaju.nip}` : ''}
                             </p>
                             {item.filePerbaikanNama && (
                               <p className="mt-1 text-[11px] font-medium text-indigo-700 truncate">
@@ -453,7 +480,7 @@ export const TugasPage = () => {
                               <button
                                 type="button"
                                 onClick={() => setSelectedPegawaiAjuan(item)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 cursor-pointer"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#5D87FF]/25 bg-[#ECF2FF] px-2.5 py-1.5 text-xs font-bold text-[#5D87FF] transition-colors hover:bg-blue-100 cursor-pointer"
                                 aria-label={`Lihat ${item.pegawaiDitugaskan.length} pegawai yang ditugaskan`}
                               >
                                 <Users className="h-3.5 w-3.5 shrink-0" />
@@ -465,7 +492,7 @@ export const TugasPage = () => {
                             <p className="text-xs font-semibold text-slate-800 whitespace-nowrap">
                               {formatRentangTanggal(item.tanggalMulai, item.tanggalSelesai)}
                             </p>
-                            <p className="text-[11px] font-medium text-blue-700 mt-0.5 whitespace-nowrap">
+                            <p className="text-[11px] font-medium text-[#5D87FF] mt-0.5 whitespace-nowrap">
                               {formatJamRange(item.jamMulai, item.jamSelesai)}
                             </p>
                             <div className="flex items-start gap-1 text-slate-500 text-xs mt-1">
@@ -486,75 +513,46 @@ export const TugasPage = () => {
                               )}
                             </div>
                           </td>
-                          <td
-                            className="relative px-5 py-4 align-top text-right whitespace-nowrap"
-                            onMouseLeave={() => setOpenActionId((current) => (current === item.id ? null : current))}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenActionId(openActionId === item.id ? null : item.id);
-                              }}
-                              className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer"
-                              aria-label={`Aksi ajuan ${item.nomorSurat}`}
-                              aria-expanded={openActionId === item.id}
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </button>
-                            {openActionId === item.id && (
-                              <div className="absolute right-5 top-14 z-20 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg text-left">
+                          <td className="px-5 py-4 align-top text-right whitespace-nowrap">
+                            <div className="inline-flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSuratToPrint(item)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-[#5D87FF]/25 bg-[#ECF2FF] px-2.5 py-1.5 text-xs font-semibold text-[#5D87FF] hover:bg-blue-100 transition-colors cursor-pointer"
+                                title="Lihat & cetak surat tugas A4"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                Lihat Surat
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedAjuan(item);
+                                  setIsModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                                title="Lihat detail penugasan"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                Detail
+                              </button>
+                              {(item.filePerbaikanUrl || item.fileDraftUrl) && (
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    openEditAndResendModal(item);
-                                    setOpenActionId(null);
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 cursor-pointer"
+                                  onClick={() =>
+                                    downloadFileUrl(
+                                      item.filePerbaikanUrl || item.fileDraftUrl,
+                                      item.filePerbaikanNama || `${item.nomorSurat}.docx`,
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                                  title="Unduh file surat"
                                 >
-                                  <FileEdit className="w-3.5 h-3.5" />
-                                  Edit &amp; Kirim Ulang
+                                  <Download className="w-3.5 h-3.5" />
+                                  Unduh
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedAjuan(item);
-                                    setIsModalOpen(true);
-                                    setOpenActionId(null);
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                  Lihat Alur Draft
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSuratToPrint(item);
-                                    setOpenActionId(null);
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer"
-                                >
-                                  <Printer className="w-3.5 h-3.5" />
-                                  Edit Nomor / Cetak A4
-                                </button>
-                                {(item.filePerbaikanUrl || item.fileDraftUrl) && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      downloadFileUrl(
-                                        item.filePerbaikanUrl || item.fileDraftUrl,
-                                        item.filePerbaikanNama || `${item.nomorSurat}.docx`,
-                                      );
-                                      setOpenActionId(null);
-                                    }}
-                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 cursor-pointer"
-                                  >
-                                    <Download className="w-3.5 h-3.5" />
-                                    Unduh File Perbaikan
-                                  </button>
-                                )}
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -562,7 +560,7 @@ export const TugasPage = () => {
                     {filteredAjuan.length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">
-                          Belum ada ajuan surat tugas yang sesuai filter saat ini.
+                          Belum ada surat tugas yang diterima.
                         </td>
                       </tr>
                     )}
@@ -589,22 +587,7 @@ export const TugasPage = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onOpenPrint={(item) => setSuratToPrint(item)}
-        onOpenEdit={openEditAndResendModal}
       />
-
-      {isFormModalOpen && (
-        <UserDraftAjuanModal
-          key={editingTask?.id || 'create-new'}
-          editingTask={editingTask}
-          currentPegawai={currentPegawai}
-          pegawaiOptions={pegawaiOptions}
-          nextDraftNumber={ajuanList.length + 1}
-          onClose={() => {
-            setIsFormModalOpen(false);
-            setEditingTask(null);
-          }}
-        />
-      )}
 
       <CetakSuratTugasModal
         surat={suratToPrint}

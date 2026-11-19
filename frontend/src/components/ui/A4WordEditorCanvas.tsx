@@ -48,6 +48,7 @@ export interface A4WordEditorCanvasProps {
   editorRef?: React.RefObject<HTMLDivElement | null>;
   signerDefaultName?: string;
   defaultSignatureRole?: SignatureRole;
+  embedded?: boolean;
 }
 
 export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
@@ -60,6 +61,7 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
   showSyncButton = true,
   editorRef: externalRef,
   defaultSignatureRole,
+  embedded = false,
 }) => {
   const { user } = useAuth();
   const internalRef = useRef<HTMLDivElement>(null);
@@ -324,7 +326,11 @@ export const A4WordEditorCanvas: React.FC<A4WordEditorCanvasProps> = ({
   };
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden print:border-none print:bg-white print:shadow-none print:overflow-visible">
+    <div
+      className={`flex flex-col bg-white overflow-hidden print:border-none print:bg-white print:shadow-none print:overflow-visible ${
+        embedded ? '' : 'rounded-2xl border border-slate-200/90 shadow-xs'
+      }`}
+    >
       {/* Header & Toolbar Editor Kertas A4 (2 Baris Terorganisir & Clean) */}
       <div className="no-print border-b border-slate-200 bg-white print:hidden">
         {/* Baris 1: Judul / Status Dokumen & Aksi Utama */}

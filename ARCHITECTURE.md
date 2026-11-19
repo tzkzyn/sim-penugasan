@@ -77,7 +77,7 @@ kp-26-sim-penugasan/
 │   │   │   ├── penugasan/          # Komponen penugasan bersama (filter pemetaan, dll.)
 │   │   │   ├── calendar/           # Kalender penugasan
 │   │   │   ├── map/                # Peta sebaran penugasan (Leaflet)
-│   │   │   └── ui/                 # Komponen UI bersama (A4WordEditorCanvas, CetakSuratTugasModal, SignaturePad, DashboardAjuanDetailModal)
+│   │   │   └── ui/                 # Komponen UI bersama (A4WordEditorCanvas, CetakSuratTugasModal, DocxPreviewViewer, KalenderRekapDinasModal, DashboardAjuanDetailModal, AdminSidebarMenu, AdminTopNavbar)
 │   │   ├── utils/                  # Helper murni (suratHtmlHelpers, signaturePadHelpers, penugasanNormalizers, userDraftAjuanHelpers, docxImport/Export)
 │   │   ├── context/
 │   │   │   ├── AuthContext.tsx      # Otentikasi & Penyimpanan role pengguna
@@ -86,10 +86,13 @@ kp-26-sim-penugasan/
 │   │   │   └── dummyData.ts        # Basis data pegawai master (8 personil)
 │   │   ├── layouts/
 │   │   │   ├── AdminLayout.tsx     # Shell layout Admin & Super Admin
+│   │   │   ├── AuthLayout.tsx      # Shell layout halaman autentikasi
 │   │   │   └── UserLayout.tsx      # Shell layout Pegawai & Approval
 │   │   ├── pages/
 │   │   │   ├── admin/              # Portal Admin Operasional
 │   │   │   ├── approval/           # Portal Pimpinan (Persetujuan & Riwayat)
+│   │   │   ├── auth/               # Halaman Login & Lupa Password
+│   │   │   ├── shared/             # Halaman bersama lintas role (Dashboard Admin/SA, Arsip, Monitoring, Rekap)
 │   │   │   ├── super-admin/        # Portal Master Super Admin
 │   │   │   └── user/               # Portal Pegawai (Tugas, Absensi, Cuti)
 │   │   ├── routes/

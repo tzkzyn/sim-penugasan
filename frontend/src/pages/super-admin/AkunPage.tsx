@@ -187,12 +187,12 @@ export const AkunPage = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-5">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Manajemen Akun & Pegawai</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Terintegrasi langsung dengan 1 tabel <span className="font-mono font-semibold text-slate-700">pegawai</span> PostgreSQL — tambah pegawai otomatis membuat akunnya.
+          <h1 className="text-lg font-bold text-slate-900 tracking-tight">Manajemen Akun & Pegawai</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Tambah pegawai, atur hak akses role, dan reset kata sandi akun dalam satu halaman.
           </p>
         </div>
         <button
@@ -200,7 +200,7 @@ export const AkunPage = () => {
             setModalError(null);
             setIsAddModalOpen(true);
           }}
-          className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm hover:shadow transition-all cursor-pointer"
+          className="flex items-center justify-center gap-2 bg-[#5D87FF] hover:bg-[#4B74E8] text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Tambah Pegawai & Akun

@@ -218,17 +218,19 @@ export const ApprovalCutiPage = () => {
   const rejectedCount = pengajuanList.filter((p) => p.status === 'DITOLAK').length;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-2 sm:p-4 space-y-5 max-w-7xl mx-auto">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <CalendarCheck className="w-7 h-7 text-blue-600" />
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Verifikasi & Approval Izin / Cuti</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1 pt-1">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+            <CalendarCheck className="w-4 h-4" />
           </div>
-          <p className="text-slate-500 text-sm mt-1">
-            Tinjau dan proses persetujuan pengajuan izin, sakit, cuti tahunan, serta dinas luar pegawai.
-          </p>
+          <div>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Verifikasi &amp; Approval Izin / Cuti</h1>
+            <p className="text-xs text-slate-500">
+              Tinjau dan proses persetujuan pengajuan izin, sakit, cuti tahunan, serta dinas luar pegawai.
+            </p>
+          </div>
         </div>
 
         {pendingCount > 0 && (

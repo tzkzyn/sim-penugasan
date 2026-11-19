@@ -196,21 +196,21 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto print:static print:bg-white print:p-0 print:block">
-      <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-4 print:m-0 print:border-none print:shadow-none print:rounded-none print:overflow-visible">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs print:static print:bg-white print:p-0 print:block">
+      <div className="relative flex flex-col w-full max-w-5xl max-h-[92vh] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden print:max-h-none print:m-0 print:border-none print:shadow-none print:rounded-none print:overflow-visible">
         {/* Modal Top Bar */}
-        <div className="no-print flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-200 bg-slate-50 print:hidden">
+        <div className="no-print shrink-0 flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-slate-100 bg-white print:hidden">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-              <FileText className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-xl bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-800 text-sm">
-                Editor &amp; Cetak Kertas A4 Surat Perintah Tugas (Ala MS Word)
+              <h3 className="font-bold text-slate-900 text-sm">
+                Editor &amp; Cetak Surat Perintah Tugas
               </h3>
               <p className="text-xs text-slate-500">
                 Nomor: <span className="font-mono font-semibold text-slate-700">{currentSurat.nomorSurat}</span> &bull; Status:{' '}
-                <span className="font-semibold text-blue-700">{currentSurat.status.replace(/_/g, ' ')}</span>
+                <span className="font-semibold text-[#5D87FF]">{currentSurat.status.replace(/_/g, ' ')}</span>
               </p>
             </div>
           </div>
@@ -219,7 +219,7 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
             <button
               type="button"
               onClick={handleSaveChanges}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" /> Simpan Perubahan
             </button>
@@ -227,7 +227,7 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
             <button
               type="button"
               onClick={handleSaveAndResend}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#5D87FF] hover:bg-[#4A75F2] text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" /> Simpan &amp; Kirim Kembali
             </button>
@@ -236,28 +236,30 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
               <button
                 type="button"
                 onClick={handleSaveAndApprove}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
               >
-                <CheckCircle2 className="w-4 h-4" /> Setujui &amp; Terbitkan SPT (ACC)
+                <CheckCircle2 className="w-3.5 h-3.5" /> Setujui &amp; Terbitkan SPT
               </button>
             )}
 
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 rounded-xl transition cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
               title="Tutup"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
+        {/* Modal Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto print:overflow-visible">
         {/* Bilah Ubah Nomor Surat & Upload File Perbaikan (Word/PDF) */}
-        <div className="no-print flex flex-wrap items-center justify-between gap-3 px-5 py-2.5 border-b border-slate-200 bg-white print:hidden">
+        <div className="no-print flex flex-wrap items-center justify-between gap-3 px-5 py-2 border-b border-slate-100 bg-slate-50/70 print:hidden">
           <div className="flex flex-wrap items-center gap-2">
-            <label htmlFor="modal-edit-nomor-surat" className="text-xs font-bold text-slate-700">
-              Ubah Nomor Surat:
+            <label htmlFor="modal-edit-nomor-surat" className="text-xs font-semibold text-slate-600">
+              Nomor Surat:
             </label>
             <input
               id="modal-edit-nomor-surat"
@@ -265,7 +267,7 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
               value={editedNomorSurat}
               onChange={(e) => handleNomorSuratChange(e.target.value)}
               placeholder="Contoh: 094/125/DISKOMINFO/2026"
-              className="w-64 rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 font-mono text-xs font-semibold text-slate-800 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-60 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-mono text-xs font-semibold text-slate-800 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF]/15"
             />
           </div>
 
@@ -280,7 +282,7 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
             <button
               type="button"
               onClick={() => uploadPerbaikanInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#5D87FF]/25 bg-[#ECF2FF] px-3 py-1.5 text-xs font-semibold text-[#5D87FF] hover:bg-blue-100 transition cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
               {currentSurat.filePerbaikanUrl ? 'Ganti File Perbaikan (Word/PDF)' : 'Upload File Perbaikan (Word/PDF)'}
@@ -341,12 +343,14 @@ const CetakSuratTugasModalContent: React.FC<CetakSuratTugasModalContentProps> = 
           initialHtml={currentSurat.dokumenDraftText}
           onChangeHtml={setDraftHtml}
           autoSyncFromData={false}
-          maxHeightClass="max-h-[75vh]"
+          maxHeightClass="max-h-none"
           showSyncButton={true}
           editorRef={canvasEditorRef}
           signerDefaultName={currentSurat.pengaju?.nama || user?.nama}
           defaultSignatureRole={modalAllowedRole}
+          embedded={true}
         />
+        </div>
       </div>
     </div>
   );

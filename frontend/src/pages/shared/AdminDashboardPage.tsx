@@ -2,12 +2,10 @@ import { useState, useMemo } from 'react';
 import { formatDate } from '@/utils/formatter';
 import { useAuth } from '@/hooks/useAuth';
 import { usePenugasan } from '@/context/PenugasanContext';
-import { CalendarWidget } from '@/components/ui/CalendarWidget';
 import { PenugasanMap } from '@/components/map/PenugasanMap';
 import { PenugasanCalendar } from '@/components/calendar/PenugasanCalendar';
 import {
   dummyPresensiPegawaiLain,
-  dummyPresensiPribadi,
   UNIT_COLORS,
 } from '@/data/dummyData';
 import type { AjuanSuratTugas } from '@/types';
@@ -29,14 +27,15 @@ import {
   BarChart3,
   Umbrella,
   ArrowUpRight,
+  Users,
 } from 'lucide-react';
 import { DashboardAjuanDetailModal } from '@/components/ui/DashboardAjuanDetailModal';
 
 export const DashboardPage = () => {
   const { user } = useAuth();
+  const basePrefix = user?.role === 'SUPER_ADMIN' ? '/super-admin' : '/admin';
   const todayFormatted = formatDate(new Date().toISOString());
 
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedAjuan, setSelectedAjuan] = useState<AjuanSuratTugas | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mapViewMode, setMapViewMode] = useState<'peta' | 'kalender'>('peta');
@@ -51,15 +50,17 @@ export const DashboardPage = () => {
     mapLocations,
   } = usePemetaanFilter();
 
-  const { tasks } = usePenugasan();
-  const activeLocations = mapLocations.filter((l) => l.status === 'AKTIF');
+  const { tasks, pegawaiList } = usePenugasan();
   const recentAjuan = tasks.slice(0, 8);
   const recentPresensi = dummyPresensiPegawaiLain.slice(0, 8);
 
-  const draftApprovalCount = useMemo(() => {
-    return tasks.filter(
-      (t) => t.status === 'DRAFT' || t.status === 'VERIFIKASI_SUBBAGIAN' || t.status === 'PERSETUJUAN_PIMPINAN'
+  const summaryStats = useMemo(() => {
+    const total = tasks.length;
+    const terbit = tasks.filter((t) => t.status === 'SURAT_TERBIT').length;
+    const proses = tasks.filter(
+      (t) => t.status === 'VERIFIKASI_SUBBAGIAN' || t.status === 'PERSETUJUAN_PIMPINAN'
     ).length;
+    return { total, terbit, proses };
   }, [tasks]);
 
   const currentYear = new Date().getFullYear();
@@ -127,154 +128,212 @@ export const DashboardPage = () => {
   return (
     <div className="p-2 sm:p-4 space-y-6 max-w-7xl mx-auto">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#2563EB] text-white p-7 rounded-2xl shadow-[0_14px_34px_-12px_rgba(29,78,216,0.45)] relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2 z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/15 text-blue-50 rounded-full text-xs font-semibold backdrop-blur-md border border-white/25">
+      <div className="bg-white border border-slate-200/80 text-slate-800 p-7 rounded-2xl shadow-[0_2px_12px_-4px_rgba(15,23,42,0.06)] flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#ECF2FF] text-[#5D87FF] rounded-full text-xs font-semibold border border-[#5D87FF]/20">
             <Building className="w-3.5 h-3.5" />
             <span>{user?.unitKerja} • {user?.role}</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Selamat Datang, <span className="text-sky-200">{user?.nama}</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Selamat Datang, <span className="text-[#5D87FF]">{user?.nama}</span>
           </h2>
-          <p className="text-blue-100/90 text-sm max-w-xl">
+          <p className="text-slate-500 text-sm max-w-xl">
             Sistem Informasi Manajemen Penugasan, Presensi Pegawai, & Visualisasi Pemetaan Lokasi Terpadu.
           </p>
         </div>
 
-        <div className="z-10 bg-white/15 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/25 text-right font-mono text-xs sm:text-sm">
-          <span className="text-blue-100 block text-[11px] font-sans">Hari ini:</span>
-          <span className="font-bold text-white text-base">{todayFormatted}</span>
+        <div className="bg-slate-50/80 px-5 py-3 rounded-2xl border border-slate-200/80 text-right font-mono text-xs sm:text-sm shrink-0">
+          <span className="text-slate-500 block text-[11px] font-sans">Hari ini:</span>
+          <span className="font-bold text-slate-800 text-base">{todayFormatted}</span>
         </div>
-
-        {/* Decorative Circles */}
-        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute right-40 top-0 w-32 h-32 bg-sky-300/15 rounded-full blur-xl" />
       </div>
 
-      {/* Executive Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-        <div className="relative overflow-hidden bg-white p-5 pl-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] transition-all flex items-center gap-4">
-          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-rose-400" />
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
-            <FileText className="w-6 h-6" />
+      {/* Ringkasan Status Penugasan */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Link
+          to={`${basePrefix}/arsip`}
+          className="flex items-center gap-3.5 rounded-2xl border border-slate-200/70 bg-white px-5 py-4 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-[#5D87FF]/40 transition"
+        >
+          <div className="w-10 h-10 rounded-xl bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+            <FileText className="w-5 h-5" />
           </div>
-          <div className="min-w-0">
-            <span className="text-xs font-semibold text-slate-500 block">Penugasan Aktif</span>
-            <span className="text-2xl font-black text-slate-800 leading-tight">{activeLocations.length}</span>
-            <span className="text-[11px] text-slate-400 block">Pegawai On-Site di Lapangan</span>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Total Penugasan</p>
+            <p className="text-xl font-bold text-slate-900">{summaryStats.total}</p>
           </div>
-        </div>
+        </Link>
 
-        <div className="relative overflow-hidden bg-white p-5 pl-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] transition-all flex items-center gap-4">
-          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-emerald-500" />
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-            <CalendarCheck className="w-6 h-6" />
+        <Link
+          to={`${basePrefix}/arsip`}
+          className="flex items-center gap-3.5 rounded-2xl border border-slate-200/70 bg-white px-5 py-4 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-emerald-300 transition"
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <CalendarCheck className="w-5 h-5" />
           </div>
-          <div className="min-w-0">
-            <span className="text-xs font-semibold text-slate-500 block">Presensi Hari Ini</span>
-            <span className="text-2xl font-black text-slate-800 leading-tight">{dummyPresensiPribadi.persentaseKehadiran}%</span>
-            <span className="text-[11px] text-emerald-600 font-medium block">Tingkat Kehadiran Instansi</span>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Selesai / Terbit</p>
+            <p className="text-xl font-bold text-slate-900">{summaryStats.terbit}</p>
           </div>
-        </div>
+        </Link>
 
-        <div className="relative overflow-hidden bg-white p-5 pl-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] transition-all flex items-center gap-4">
-          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-amber-400" />
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-            <Clock className="w-6 h-6" />
+        <Link
+          to={`${basePrefix}/arsip`}
+          className="flex items-center gap-3.5 rounded-2xl border border-slate-200/70 bg-white px-5 py-4 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-amber-300 transition"
+        >
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5" />
           </div>
-          <div className="min-w-0">
-            <span className="text-xs font-semibold text-slate-500 block">Draft Butuh Approval</span>
-            <span className="text-2xl font-black text-slate-800 leading-tight">{draftApprovalCount}</span>
-            <span className="text-[11px] text-slate-400 block">Ajuan Tahap Verifikasi</span>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Dalam Proses</p>
+            <p className="text-xl font-bold text-slate-900">{summaryStats.proses}</p>
           </div>
-        </div>
+        </Link>
+
+        <Link
+          to={`${basePrefix}/anggota`}
+          className="flex items-center gap-3.5 rounded-2xl border border-slate-200/70 bg-white px-5 py-4 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition"
+        >
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Total Pegawai</p>
+            <p className="text-xl font-bold text-slate-900">{pegawaiList.length}</p>
+          </div>
+        </Link>
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Rekap Penugasan (Spans 2 columns) */}
-        <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] flex flex-col h-[280px]">
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                <BarChart3 className="w-5 h-5" />
+        <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200/70 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between gap-5">
+          <div className="flex flex-wrap justify-between items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+                <BarChart3 className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800 text-[15px]">Rekap Penugasan {currentYear}</h3>
-                <p className="text-[12px] text-slate-500 mt-0.5">Total pegawai yang tercatat dalam penugasan per bulan.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Rekap Penugasan {currentYear}</h3>
+                <p className="text-xs text-slate-500">Jumlah pegawai ditugaskan per bulan</p>
               </div>
             </div>
-            <Link to="../rekap-penugasan" className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors rounded-lg text-xs font-bold whitespace-nowrap">
+            <Link
+              to={`${basePrefix}/rekap-penugasan`}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#ECF2FF] text-[#5D87FF] hover:bg-blue-100 transition-colors rounded-lg text-xs font-semibold whitespace-nowrap"
+            >
               Lihat rekap <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          
-          {/* Bar Chart */}
-          <div className="flex-1 flex items-end justify-between gap-1.5 sm:gap-2 px-1">
-            {monthlyStats.map((item, idx) => (
-              <div key={idx} className="flex flex-col items-center flex-1 group" title={`${item.label}: ${item.count} orang ditugaskan`}>
-                <div className="w-full max-w-[36px] bg-slate-50 rounded-t-lg h-[130px] relative overflow-hidden flex items-end">
-                  <div 
-                    className={`w-full rounded-t-lg transition-all duration-500 ease-out ${item.hasData ? 'bg-gradient-to-t from-blue-600 to-blue-400' : 'bg-slate-200/60'}`}
-                    style={{ height: item.h }}
-                  ></div>
+
+          {/* Clean Modern Bar Chart */}
+          <div className="relative pt-2">
+            {/* Subtle horizontal guide lines */}
+            <div className="pointer-events-none absolute inset-x-0 top-2 bottom-7 flex flex-col justify-between">
+              <div className="border-t border-dashed border-slate-100" />
+              <div className="border-t border-dashed border-slate-100" />
+              <div className="border-t border-dashed border-slate-100" />
+            </div>
+
+            <div className="relative flex items-end justify-between gap-2 border-b border-slate-200/80 pb-1.5">
+              {monthlyStats.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex flex-col items-center flex-1 group"
+                  title={`${item.label}: ${item.count} orang ditugaskan`}
+                >
+                  <div className="w-full max-w-[30px] h-[120px] flex flex-col items-center justify-end">
+                    <span
+                      className={`text-[11px] font-bold mb-1 transition-colors ${
+                        item.hasData
+                          ? 'text-[#5D87FF]'
+                          : 'text-slate-300 group-hover:text-slate-500'
+                      }`}
+                    >
+                      {item.count}
+                    </span>
+                    <div
+                      className={`w-full rounded-t-lg transition-all duration-500 ease-out ${
+                        item.hasData
+                          ? 'bg-gradient-to-t from-[#5D87FF] to-[#87A8FF] shadow-sm shadow-[#5D87FF]/25 group-hover:from-[#4A75F2] group-hover:to-[#6E94FF]'
+                          : 'bg-slate-200/80 group-hover:bg-slate-300'
+                      }`}
+                      style={{ height: item.hasData ? item.h : '5px' }}
+                    />
+                  </div>
+                  <span
+                    className={`text-[10px] sm:text-[11px] mt-2 ${
+                      item.hasData ? 'font-bold text-[#5D87FF]' : 'font-medium text-slate-400'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
                 </div>
-                <span className="text-[10px] sm:text-xs font-bold text-slate-400 mt-3">{item.label}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Rekap Izin & Cuti (Spans 1 column) */}
-        <div className="lg:col-span-1 bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] flex flex-col h-[280px]">
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                <Umbrella className="w-5 h-5" />
+        <div className="lg:col-span-1 bg-white p-5 rounded-2xl border border-slate-200/70 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between gap-5">
+          <div className="flex justify-between items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Umbrella className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800 text-[15px]">Rekap Izin & Cuti</h3>
-                <p className="text-[12px] text-slate-500 mt-0.5">Kuota izin/cuti tahun {currentYear}.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Rekap Izin &amp; Cuti</h3>
+                <p className="text-xs text-slate-500">Kuota tahun {currentYear}</p>
               </div>
             </div>
-            <Link to="../absensi?tab=pegawai-lain" className="text-xs font-bold text-blue-600 hover:underline whitespace-nowrap mt-1">Detail</Link>
+            <Link
+              to={`${basePrefix}/absensi?tab=pegawai-lain`}
+              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/70 text-xs font-semibold text-slate-700 whitespace-nowrap transition"
+            >
+              Detail
+            </Link>
           </div>
-          
+
           {/* Donut Chart and Stats */}
-          <div className="flex-1 flex items-center justify-center gap-6">
-            {/* SVG Donut */}
-            <div className="relative w-28 h-28 shrink-0">
+          <div className="flex-1 flex items-center justify-center gap-6 py-2">
+            <div className="relative w-26 h-26 shrink-0">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-100" />
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="40" 
-                  stroke="currentColor" 
-                  strokeWidth="12" 
-                  fill="transparent" 
-                  strokeDasharray="251.2" 
-                  strokeDashoffset={251.2 * (1 - cutiStats.persenTersisa / 100)} 
-                  strokeLinecap="round" 
-                  className={cutiStats.terpakai > 0 ? "text-emerald-500" : "text-emerald-400"} 
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  stroke="currentColor"
+                  strokeWidth="10"
+                  fill="transparent"
+                  className="text-slate-100"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  stroke="currentColor"
+                  strokeWidth="10"
+                  fill="transparent"
+                  strokeDasharray="251.2"
+                  strokeDashoffset={251.2 * (1 - cutiStats.persenTersisa / 100)}
+                  strokeLinecap="round"
+                  className="text-emerald-500"
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-black text-slate-800">{cutiStats.persenTersisa}%</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Tersisa</span>
+                <span className="text-lg font-bold text-slate-900">{cutiStats.persenTersisa}%</span>
+                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Tersisa</span>
               </div>
             </div>
-            
-            {/* Stats */}
-            <div className="flex flex-col gap-4">
+
+            <div className="flex flex-col gap-3">
               <div>
-                <div className="text-xl font-black text-emerald-700">{cutiStats.sisa}</div>
-                <div className="text-xs font-medium text-slate-500">Sisa hari izin/cuti</div>
+                <div className="text-xl font-bold text-emerald-600">{cutiStats.sisa} Hari</div>
+                <div className="text-xs text-slate-500">Sisa kuota izin/cuti</div>
               </div>
-              <div className="h-px bg-slate-100 w-full"></div>
+              <div className="h-px bg-slate-100 w-full" />
               <div>
-                <div className="text-xl font-black text-slate-700">{cutiStats.terpakai}</div>
-                <div className="text-xs font-medium text-slate-500">Hari telah terpakai</div>
+                <div className="text-xl font-bold text-slate-800">{cutiStats.terpakai} Hari</div>
+                <div className="text-xs text-slate-500">Telah terpakai</div>
               </div>
             </div>
           </div>
@@ -311,7 +370,7 @@ export const DashboardPage = () => {
             </div>
 
             <Link
-              to="/admin/pemetaan"
+              to={user?.role === 'SUPER_ADMIN' ? '/super-admin/pemetaan' : '/admin/pemetaan'}
               className="flex items-center gap-1 text-xs font-bold text-[#1D4ED8] hover:bg-blue-100 bg-[#EEF3FB] px-3.5 py-1.5 rounded-full transition-colors"
             >
               <span>Lihat Detail</span>
@@ -352,10 +411,8 @@ export const DashboardPage = () => {
         )}
       </div>
 
-      {/* Baris 2 Kolom Seimbang: Ajuan Terbaru (7) + Kalender (5) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Ajuan Surat Tugas Terbaru */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] flex flex-col">
+      {/* Ajuan Surat Tugas Terbaru */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] flex flex-col">
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center">
@@ -429,12 +486,6 @@ export const DashboardPage = () => {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Calendar Widget */}
-        <div className="lg:col-span-5">
-          <CalendarWidget selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-        </div>
       </div>
 
       {/* Ringkasan Presensi Pegawai Hari Ini (Grid Kartu Rapi) */}

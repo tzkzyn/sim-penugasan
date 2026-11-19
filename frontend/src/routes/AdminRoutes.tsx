@@ -2,24 +2,24 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 // Lazy-loaded pages
-const DashboardPage = lazy(() => import('@/pages/admin/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const DashboardPage = lazy(() => import('@/pages/shared/AdminDashboardPage').then(m => ({ default: m.DashboardPage })));
 const AnggotaPage = lazy(() => import('@/pages/admin/AnggotaPage').then(m => ({ default: m.AnggotaPage })));
-const AbsensiPage = lazy(() => import('@/pages/admin/AbsensiPage').then(m => ({ default: m.AbsensiPage })));
+const AbsensiPage = lazy(() => import('@/pages/user/AbsensiPage').then(m => ({ default: m.AbsensiPage })));
 const TugasPage = lazy(() => import('@/pages/admin/TugasPage').then(m => ({ default: m.TugasPage })));
-const PemetaanPage = lazy(() => import('@/pages/admin/PemetaanPage').then(m => ({ default: m.PemetaanPage })));
+const PemetaanPage = lazy(() => import('@/pages/super-admin/PemetaanPage').then(m => ({ default: m.PemetaanPage })));
 const NotifikasiPage = lazy(() => import('@/pages/admin/NotifikasiPage').then(m => ({ default: m.NotifikasiPage })));
 const ProfilePage = lazy(() => import('@/pages/admin/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const AjuanPegawaiPage = lazy(() => import('@/pages/admin/AjuanPegawaiPage').then(m => ({ default: m.AjuanPegawaiPage })));
-const RekapPenugasanPage = lazy(() => import('@/pages/admin/RekapPenugasanPage').then(m => ({ default: m.RekapPenugasanPage })));
+const RekapPenugasanPage = lazy(() => import('@/pages/shared/RekapPenugasanPage').then(m => ({ default: m.RekapPenugasanPage })));
 
-// New pages from backup
 const DetailPegawaiPage = lazy(() => import('@/pages/admin/DetailPegawaiPage').then(m => ({ default: m.DetailPegawaiPage })));
 const BuatTugasPage = lazy(() => import('@/pages/admin/BuatTugasPage').then(m => ({ default: m.BuatTugasPage })));
 const EditTugasPage = lazy(() => import('@/pages/admin/EditTugasPage').then(m => ({ default: m.EditTugasPage })));
-const MonitoringTugasPage = lazy(() => import('@/pages/admin/MonitoringTugasPage').then(m => ({ default: m.MonitoringTugasPage })));
+const MonitoringTugasPage = lazy(() => import('@/pages/shared/MonitoringTugasPage').then(m => ({ default: m.MonitoringTugasPage })));
 const UploadSuratPage = lazy(() => import('@/pages/admin/UploadSuratPage').then(m => ({ default: m.UploadSuratPage })));
-const TemplateSuratPage = lazy(() => import('@/pages/admin/TemplateSuratPage').then(m => ({ default: m.TemplateSuratPage })));
-const VerifikasiAbsensiPage = lazy(() => import('@/pages/super-admin/VerifikasiAbsensiPage').then(m => ({ default: m.VerifikasiAbsensiPage })));
+const TemplateSuratPage = lazy(() => import('@/pages/approval/TemplateSuratPage').then(m => ({ default: m.TemplateSuratPage })));
+const VerifikasiAbsensiPage = lazy(() => import('@/pages/approval/ApprovalCutiPage').then(m => ({ default: m.ApprovalCutiPage })));
+const ArsipSuratLaporanPage = lazy(() => import('@/pages/shared/ArsipSuratLaporanPage').then(m => ({ default: m.ArsipSuratLaporanPage })));
 
 const PageLoader = () => (
   <div className="flex h-64 items-center justify-center">
@@ -54,6 +54,7 @@ export const AdminRoutes = () => {
 
         {/* Other Pages */}
         <Route path="pemetaan" element={<PemetaanPage />} />
+        <Route path="arsip" element={<ArsipSuratLaporanPage />} />
         <Route path="notifikasi" element={<NotifikasiPage />} />
         <Route path="profile" element={<ProfilePage />} />
         

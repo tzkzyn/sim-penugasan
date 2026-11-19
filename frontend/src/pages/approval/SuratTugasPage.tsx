@@ -74,14 +74,14 @@ export const SuratTugasPage = () => {
   return (
     <div className="mx-auto max-w-7xl space-y-5 p-2 sm:p-4">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)]">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center shrink-0">
-            <FileText className="w-6 h-6" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1 pt-1">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Daftar Surat Tugas Unit {user?.unitKerja || ''}</h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Kelola dan pantau seluruh arsip surat tugas di unit kerja Anda.</p>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Daftar Surat Tugas Unit {user?.unitKerja || ''}</h1>
+            <p className="text-xs text-slate-500">Kelola dan pantau seluruh arsip surat tugas di unit kerja Anda.</p>
           </div>
         </div>
       </div>

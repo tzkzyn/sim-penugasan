@@ -1,10 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { SidebarBotanicalDecor } from '@/components/ui/SidebarBotanicalDecor';
 import { UserSidebarMenu } from '@/components/user/UserSidebarMenu';
 import { UserTopNavbar } from '@/components/user/UserTopNavbar';
-import { LogOut, ShieldCheck, X } from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 
 interface UserLayoutProps {
   children: ReactNode;
@@ -27,37 +26,24 @@ export const UserLayout = ({ children }: UserLayoutProps) => {
     <div className="h-screen overflow-hidden bg-[#F3F6FB]">
       <div className="flex h-full">
         {/* Sidebar Desktop */}
-        <aside className="relative hidden h-full w-72 shrink-0 flex-col overflow-hidden bg-gradient-to-b from-[#1E3A8A] via-[#1D4ED8] to-[#1E40AF] py-6 pl-5 pr-0 text-white lg:flex">
-          <SidebarBotanicalDecor />
-
-          <Link to="/user/dashboard" className="relative z-10 flex shrink-0 items-center gap-3 px-2 py-2 pr-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#1E40AF] shadow-md">
-              <ShieldCheck className="h-5 w-5" />
+        <aside className="relative hidden h-full w-72 shrink-0 flex-col overflow-hidden bg-white border-r border-slate-200/80 px-4 py-6 text-slate-700 lg:flex">
+          <Link to="/user/dashboard" className="relative z-10 flex shrink-0 items-center gap-3 px-2 py-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200/80 shadow-xs">
+              <img
+                src={`${import.meta.env.BASE_URL}logo-bmti.png`}
+                alt="Logo BMTI"
+                className="h-8 w-8 object-contain"
+              />
             </div>
             <div>
-              <p className="text-sm font-bold tracking-tight text-white">SIM Penugasan</p>
-              <p className="text-xs text-blue-200">Pegawai</p>
+              <p className="text-sm font-bold tracking-tight text-slate-800">SIM Penugasan</p>
+              <p className="text-xs text-slate-500">Pegawai</p>
             </div>
           </Link>
 
           <nav className="relative z-10 mt-8 flex-1 min-h-0 space-y-1.5 overflow-y-auto">
             <UserSidebarMenu />
           </nav>
-
-          <div className="relative z-10 mt-4 mr-5 shrink-0 rounded-2xl border border-white/20 bg-white/10 p-4 text-white backdrop-blur-sm">
-            <p className="text-sm font-bold truncate">{user?.nama || 'User'}</p>
-            <p className="text-xs text-blue-100/90 truncate">
-              {user?.unitKerja || 'Unit'} • {user?.role || 'PEGAWAI'}
-            </p>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="mt-3.5 flex w-full items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/15 px-3 py-2 text-sm font-semibold text-white hover:bg-white/25 transition cursor-pointer"
-            >
-              <LogOut className="h-4 w-4" />
-              Keluar
-            </button>
-          </div>
         </aside>
 
         {/* Drawer Mobile */}
@@ -67,27 +53,29 @@ export const UserLayout = ({ children }: UserLayoutProps) => {
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="relative flex w-72 max-w-[85vw] flex-col overflow-hidden bg-gradient-to-b from-[#1E3A8A] via-[#1D4ED8] to-[#1E40AF] py-5 pl-5 pr-0 text-white shadow-2xl">
-              <SidebarBotanicalDecor />
-
-              <div className="relative z-10 flex items-center justify-between pb-4 pr-5 border-b border-white/15">
+            <div className="relative flex w-72 max-w-[85vw] flex-col overflow-hidden bg-white border-r border-slate-200/80 p-5 text-slate-700 shadow-2xl">
+              <div className="relative z-10 flex items-center justify-between pb-4 border-b border-slate-200/80">
                 <Link
                   to="/user/dashboard"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#1E40AF] shadow-sm">
-                    <ShieldCheck className="h-5 w-5" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white border border-slate-200/80 shadow-xs">
+                    <img
+                      src={`${import.meta.env.BASE_URL}logo-bmti.png`}
+                      alt="Logo BMTI"
+                      className="h-7 w-7 object-contain"
+                    />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">SIM Penugasan</p>
-                    <p className="text-xs text-blue-200">Pegawai</p>
+                    <p className="text-sm font-bold text-slate-800">SIM Penugasan</p>
+                    <p className="text-xs text-slate-500">Pegawai</p>
                   </div>
                 </Link>
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="rounded-lg p-1.5 text-blue-100 hover:bg-white/15 hover:text-white"
+                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                   aria-label="Tutup menu"
                 >
                   <X className="h-5 w-5" />
@@ -98,11 +86,11 @@ export const UserLayout = ({ children }: UserLayoutProps) => {
                 <UserSidebarMenu onNavigate={() => setIsMobileMenuOpen(false)} />
               </nav>
 
-              <div className="relative z-10 pt-4 pr-5 border-t border-white/15">
+              <div className="relative z-10 pt-4 border-t border-slate-200/80">
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/15 px-3 py-2.5 text-sm font-semibold text-white hover:bg-white/25 transition cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" /> Keluar
                 </button>
@@ -113,7 +101,11 @@ export const UserLayout = ({ children }: UserLayoutProps) => {
 
         {/* Area Konten Utama */}
         <div className="flex-1 min-w-0 h-full overflow-y-auto bg-[#F3F6FB]">
-          <UserTopNavbar onOpenMobileMenu={() => setIsMobileMenuOpen(true)} />
+          <UserTopNavbar
+            user={user}
+            onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+            onLogout={handleLogout}
+          />
           <main className="p-4 sm:p-6">{children}</main>
         </div>
       </div>

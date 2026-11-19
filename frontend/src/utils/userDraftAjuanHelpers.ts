@@ -85,6 +85,7 @@ export const buildInitialFormState = (
     file: null as File | null,
     existingFilePerbaikanUrl: '',
     existingFilePerbaikanNama: '',
+    googleDocsSuratUrl: '',
     docMode: 'editor' as 'editor' | 'upload',
     dokumenDraftText: '',
     ttdUserPng: '',

@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { dummyPegawaiList, UNIT_COLORS } from '@/data/dummyData';
 import { usePenugasan } from '@/context/PenugasanContext';
-import { Trophy, ChevronDown, Briefcase, Building2, Table2, Filter } from 'lucide-react';
+import { Trophy, ChevronDown, Briefcase, Building2, Table2, Filter, ArrowLeft } from 'lucide-react';
 
 type SubTab = 'jabatan' | 'unitkerja' | 'tabelrekap';
 type JenisDinas = 'Semua' | 'Luar' | 'Dalam' | 'Daring' | 'Izin';
@@ -49,6 +50,7 @@ const BarChart = ({ data, maxValue, colorFn }: { data: { label: string; value: n
 );
 
 export const RekapPenugasanPage = () => {
+  const navigate = useNavigate();
   const { tasks } = usePenugasan();
   const [tahun, setTahun] = useState(2026);
   const [bulan, setBulan] = useState<number | 'Semua'>('Semua');
@@ -157,12 +159,23 @@ export const RekapPenugasanPage = () => {
   ];
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-5">
       {/* Page Header with Year & Month Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Rekap Penugasan Pegawai</h1>
-          <p className="text-sm text-slate-500 mt-1">Data rekapitulasi penugasan seluruh pegawai.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1 pt-1">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shrink-0"
+            title="Kembali ke halaman sebelumnya"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Kembali</span>
+          </button>
+          <div>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Rekap Penugasan Pegawai</h1>
+            <p className="text-xs text-slate-500">Data rekapitulasi penugasan seluruh pegawai.</p>
+          </div>
         </div>
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">

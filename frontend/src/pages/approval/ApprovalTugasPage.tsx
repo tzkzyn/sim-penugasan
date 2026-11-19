@@ -121,14 +121,14 @@ export const ApprovalTugasPage = () => {
   return (
     <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-5">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)]">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-[#EEF3FB] text-[#1D4ED8] flex items-center justify-center shrink-0">
-            <FileText className="w-6 h-6" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1 pt-1">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Persetujuan Surat Tugas</h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Persetujuan Surat Tugas</h1>
+            <p className="text-xs text-slate-500">
               Tinjau dan proses pengajuan surat tugas dari unit kerja Anda.
             </p>
           </div>

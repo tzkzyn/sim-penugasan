@@ -131,11 +131,16 @@ export const AjuanPegawaiPage = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-5">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Ajuan Pegawai</h1>
-        <p className="text-sm text-slate-500 mt-1">Kelola seluruh ajuan surat tugas pegawai berdasarkan status pengajuan.</p>
+      <div className="flex items-center gap-2.5 px-1 pt-1">
+        <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+          <FileText className="w-4 h-4" />
+        </div>
+        <div>
+          <h1 className="text-lg font-bold text-slate-900 tracking-tight">Ajuan Pegawai</h1>
+          <p className="text-xs text-slate-500">Kelola seluruh ajuan surat tugas pegawai berdasarkan status pengajuan.</p>
+        </div>
       </div>
 
       {/* Tab Navigation */}

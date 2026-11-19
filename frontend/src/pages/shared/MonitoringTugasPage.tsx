@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { usePenugasan } from '@/context/PenugasanContext';
 import {
   Activity,
@@ -9,13 +10,17 @@ import {
   MapPin,
   Clock,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  ShieldCheck
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { id } from 'date-fns/locale';
 
 export const MonitoringTugasPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const basePrefix = isSuperAdmin ? '/super-admin' : '/admin';
   const { tasks } = usePenugasan();
   const [searchTerm, setSearchTerm] = useState('');
   const [unitFilter, setUnitFilter] = useState('ALL');
@@ -62,21 +67,27 @@ export const MonitoringTugasPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-5">
       {/* Title & Action */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Activity className="h-6 w-6 text-blue-600" />
-            Monitoring Real-Time Penugasan
-          </h1>
-          <p className="text-sm text-slate-500">
-            Pantau progres operasional surat tugas, lokasi tim lapangan, dan persentase realisasi.
-          </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1 pt-1">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+            {isSuperAdmin ? <ShieldCheck className="h-4 w-4" /> : <Activity className="h-4 w-4" />}
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-slate-900">
+              {isSuperAdmin ? 'Monitoring Penugasan Global (Super Admin)' : 'Monitoring Real-Time Penugasan'}
+            </h1>
+            <p className="text-xs text-slate-500">
+              {isSuperAdmin
+                ? 'Audit dan pantau pergerakan dinas seluruh pegawai dan surat tugas lintas unit kerja.'
+                : 'Pantau progres operasional surat tugas, lokasi tim lapangan, dan persentase realisasi.'}
+            </p>
+          </div>
         </div>
         <button
-          onClick={() => navigate('/admin/tugas/buat')}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition cursor-pointer"
+          onClick={() => navigate(`${basePrefix}/tugas/buat`)}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5D87FF] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#4A75F2] transition cursor-pointer shrink-0"
         >
           Buat Tugas Baru
         </button>
@@ -285,7 +296,7 @@ export const MonitoringTugasPage = () => {
                   <span className="text-[11px] font-medium text-slate-400">Unit: {task.unitKerja}</span>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => navigate(`/admin/tugas/edit?id=${task.id}`)}
+                      onClick={() => navigate(`${basePrefix}/tugas/edit?id=${task.id}`)}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 transition cursor-pointer"
                     >
                       Kelola Tugas <ArrowRight className="h-3.5 w-3.5" />

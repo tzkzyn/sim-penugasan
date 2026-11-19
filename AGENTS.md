@@ -12,7 +12,7 @@ Dokumen ini berisi standar aturan main, etika penulisan kode (*coding rules*), d
    * Manfaatkan teknologi yang sudah terpasang: **React 19**, **Tailwind CSS v4**, **Lucide React**, dan **Fitur Native Web API** (seperti `window.print()` untuk cetak surat, dan `fetch`/`axios` untuk API).
 2. **Kerapian & Kepatuhan Struktur Folder**:
    * Jangan mengubah nama atau memindahkan folder dasar (`frontend/`, `backend/`, `pages/`, `routes/`, `layouts/`, `context/`).
-   * Setiap penambahan komponen baru wajib ditaruh di direktori yang sesuai (misal: modal di `frontend/src/components/ui/`, halaman di `frontend/src/pages/<role>/`).
+   * Setiap penambahan komponen baru wajib ditaruh di direktori yang sesuai (misal: modal di `frontend/src/components/ui/`, halaman khusus role di `frontend/src/pages/<role>/`, dan halaman bersama lintas role di `frontend/src/pages/shared/`).
 3. **Verifikasi Build Wajib Lulus 100%**:
    * Sebelum menyelesaikan turn/tugas pengerjaan, wajib menjalankan `npm run build` di folder `frontend/` dan memastikan hasilnya **Exit Code: 0** tanpa satupun error TypeScript (`noUnusedLocals`, `noImplicitAny`).
 4. **Keamanan & Privasi Data**:

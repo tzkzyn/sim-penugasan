@@ -86,7 +86,7 @@ Frontend berjalan di: `http://localhost:5173/kp-26-sim-penugasan/`
 
 Kode frontend dipisahkan per role (*Strict Per-Role Separation*) agar mudah dirawat dan ditambah fiturnya:
 
-- `frontend/src/pages/<role>/` — Halaman utama masing-masing role (`admin`, `super-admin`, `approval`, `user`).
+- `frontend/src/pages/<role>/` — Halaman utama masing-masing role (`admin`, `super-admin`, `approval`, `user`, `auth`) serta `shared/` untuk halaman bersama lintas role (`AdminDashboardPage`, `ArsipSuratLaporanPage`, `MonitoringTugasPage`, `RekapPenugasanPage`).
 - `frontend/src/components/<role>/` — Sub-komponen, tab, form, dan modal khusus tiap role (`admin/`, `super-admin/`, `approval/`, `user/`).
 - `frontend/src/components/ui/` — Komponen UI bersama lintas role (`A4WordEditorCanvas`, `CetakSuratTugasModal`, `DashboardAjuanDetailModal`, `signature-pad`, navbar/sidebar).
 - `frontend/src/utils/` — Helper murni non-UI (generator HTML A4, geometri tanda tangan, normalisasi data API, dan ekspor/impor `.docx`).

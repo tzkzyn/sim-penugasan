@@ -5,5 +5,5 @@ interface AuthLayoutProps {
 }
 
 export const AuthLayout = ({ children }: AuthLayoutProps) => {
-  return <div className="min-h-screen bg-slate-100">{children}</div>;
+  return <div className="min-h-screen w-full bg-white">{children}</div>;
 };

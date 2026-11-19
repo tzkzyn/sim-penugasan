@@ -4,12 +4,12 @@ Antarmuka web **SIM-Penugasan** menggunakan arsitektur modular **Pola 1 (Strict 
 
 ## Struktur Folder `src/`
 
-- **`pages/<role>/`**: Halaman utama per role (`admin/`, `super-admin/`, `approval/`, `user/`, `auth/`).
+- **`pages/<role>/`**: Halaman utama per role (`admin/`, `super-admin/`, `approval/`, `user/`, `auth/`) serta `shared/` untuk halaman bersama lintas role (`AdminDashboardPage`, `ArsipSuratLaporanPage`, `MonitoringTugasPage`, `RekapPenugasanPage`).
 - **`components/admin/`**: Sub-komponen khusus Admin (`AdminTugasTabs`, `AdminBuatTugasSections`, `AdminEditTugasForm`, `AdminAjuanPegawaiModals`).
 - **`components/super-admin/`**: Sub-komponen khusus Super Admin (`SuperAdminTugasModals`, `SuperAdminAjuanPegawaiModals`).
 - **`components/approval/`**: Sub-komponen khusus Approval (`ApprovalConfirmModal`, `ApprovalTemplateSections`).
 - **`components/user/`**: Sub-komponen khusus User (`UserSidebarMenu`, `UserTopNavbar`, `UserDraftAjuanModal`, `UserDraftAjuanPreview`, `UserAjuanModals`, `UserWorkflowTab`, `UserPresensiPegawaiLainTab`).
-- **`components/ui/`**: Komponen UI bersama (`A4WordEditorCanvas`, `CetakSuratTugasModal`, `DashboardAjuanDetailModal`, `AdminSidebarMenu`, `AdminTopNavbar`, `signature-pad`, `CalendarWidget`, dll.).
+- **`components/ui/`**: Komponen UI bersama (`A4WordEditorCanvas`, `CetakSuratTugasModal`, `DashboardAjuanDetailModal`, `KalenderRekapDinasModal`, `DocxPreviewViewer`, `AdminSidebarMenu`, `AdminTopNavbar`, `signature-pad`, dll.).
 - **`components/penugasan/`**, **`components/map/`**, **`components/calendar/`**: Komponen domain penugasan bersama.
 - **`utils/`**: Helper murni non-UI (`suratHtmlHelpers`, `signaturePadHelpers`, `penugasanHelpers`, `penugasanNormalizers`, `userDraftAjuanHelpers`, `docxImport`, `docxExport`).
 - **`context/`**: `AuthContext` (sesi & role) dan `PenugasanContext` (state terpusat tugas, pegawai, template).

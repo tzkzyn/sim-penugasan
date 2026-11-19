@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { SidebarBotanicalDecor } from '@/components/ui/SidebarBotanicalDecor';
 import { AdminSidebarMenu } from '@/components/ui/AdminSidebarMenu';
 import { AdminTopNavbar } from '@/components/ui/AdminTopNavbar';
 import { LogOut, X } from 'lucide-react';
@@ -44,29 +43,27 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       <div className="flex h-full">
         {/* ====== SIDEBAR DESKTOP ====== */}
         <aside
-          className={`relative hidden h-full shrink-0 flex-col overflow-hidden bg-gradient-to-b from-[#1E3A8A] via-[#1D4ED8] to-[#1E40AF] py-6 text-white lg:flex transition-all duration-300 ${
-            isSidebarCollapsed ? 'w-20 px-2.5' : 'w-72 pl-5 pr-0'
+          className={`relative hidden h-full shrink-0 flex-col overflow-hidden bg-white border-r border-slate-200/80 py-6 text-slate-700 lg:flex transition-all duration-300 ${
+            isSidebarCollapsed ? 'w-20 px-2.5' : 'w-72 px-4'
           }`}
         >
-          <SidebarBotanicalDecor />
-
           <Link
             to={`${prefix}/dashboard`}
             className={`relative z-10 flex shrink-0 items-center gap-3 py-2 ${
-              isSidebarCollapsed ? 'justify-center' : 'px-2 pr-5'
+              isSidebarCollapsed ? 'justify-center' : 'px-2'
             }`}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-md">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200/80 shadow-xs">
               <img
-                src={`${import.meta.env.BASE_URL}logo-kemendikdasmen.ico`}
+                src={`${import.meta.env.BASE_URL}logo-bmti.png`}
                 alt="Logo"
                 className="h-9 w-9"
               />
             </div>
             {!isSidebarCollapsed && (
               <div className="overflow-hidden whitespace-nowrap">
-                <p className="text-sm font-bold tracking-tight text-white">SIM Penugasan</p>
-                <p className="text-xs text-blue-200">{panelLabel}</p>
+                <p className="text-sm font-bold tracking-tight text-slate-800">SIM Penugasan</p>
+                <p className="text-xs text-slate-500">{panelLabel}</p>
               </div>
             )}
           </Link>
@@ -87,31 +84,29 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="relative flex w-72 max-w-[85vw] flex-col overflow-hidden bg-gradient-to-b from-[#1E3A8A] via-[#1D4ED8] to-[#1E40AF] py-5 pl-5 pr-0 text-white shadow-2xl">
-              <SidebarBotanicalDecor />
-
-              <div className="relative z-10 flex items-center justify-between pb-4 pr-5 border-b border-white/15">
+            <div className="relative flex w-72 max-w-[85vw] flex-col overflow-hidden bg-white border-r border-slate-200/80 p-5 text-slate-700 shadow-2xl">
+              <div className="relative z-10 flex items-center justify-between pb-4 border-b border-slate-200/80">
                 <Link
                   to={`${prefix}/dashboard`}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200/80 shadow-xs">
                     <img
-                      src={`${import.meta.env.BASE_URL}logo-kemendikdasmen.ico`}
+                      src={`${import.meta.env.BASE_URL}logo-bmti.png`}
                       alt="Logo"
                       className="h-8 w-8"
                     />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">SIM Penugasan</p>
-                    <p className="text-xs text-blue-200">{panelLabel}</p>
+                    <p className="text-sm font-bold text-slate-800">SIM Penugasan</p>
+                    <p className="text-xs text-slate-500">{panelLabel}</p>
                   </div>
                 </Link>
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="rounded-lg p-1.5 text-blue-100 hover:bg-white/15 hover:text-white"
+                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                   aria-label="Tutup menu"
                 >
                   <X className="h-5 w-5" />
@@ -127,11 +122,11 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
                 />
               </nav>
 
-              <div className="relative z-10 pt-4 pr-5 border-t border-white/15">
+              <div className="relative z-10 pt-4 border-t border-slate-200/80">
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/15 px-3 py-2.5 text-sm font-semibold text-white hover:bg-white/25 transition cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" /> Keluar
                 </button>

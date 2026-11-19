@@ -41,15 +41,17 @@ export const RiwayatApprovalPage = () => {
   });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-          <History className="h-7 w-7 text-blue-600" />
-          Riwayat Keputusan Approval
-        </h1>
-        <p className="text-sm text-slate-500">
-          Catatan riwayat surat tugas yang telah disetujui (terbit) maupun ditolak di unit {user?.unitKerja || ''}.
-        </p>
+    <div className="mx-auto max-w-7xl space-y-5 p-2 sm:p-4">
+      <div className="flex items-center gap-2.5 px-1 pt-1">
+        <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+          <History className="h-4 w-4" />
+        </div>
+        <div>
+          <h1 className="text-lg font-bold text-slate-900">Riwayat Keputusan Approval</h1>
+          <p className="text-xs text-slate-500">
+            Catatan riwayat surat tugas yang telah disetujui (terbit) maupun ditolak di unit {user?.unitKerja || ''}.
+          </p>
+        </div>
       </div>
 
       {/* Filter Toolbar */}

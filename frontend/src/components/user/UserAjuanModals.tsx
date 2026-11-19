@@ -100,7 +100,7 @@ interface WorkflowDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenPrint: (ajuan: AjuanSuratTugas) => void;
-  onOpenEdit: (ajuan: AjuanSuratTugas) => void;
+  onOpenEdit?: (ajuan: AjuanSuratTugas) => void;
 }
 
 export const WorkflowDetailModal = ({
@@ -203,16 +203,18 @@ export const WorkflowDetailModal = ({
             >
               <Printer className="w-4 h-4" /> Buka &amp; Cetak Kertas A4
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                onOpenEdit(ajuan);
-                onClose();
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-md"
-            >
-              <FileEdit className="w-4 h-4" /> Edit &amp; Kirim Ulang
-            </button>
+            {onOpenEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenEdit(ajuan);
+                  onClose();
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-md"
+              >
+                <FileEdit className="w-4 h-4" /> Edit &amp; Kirim Ulang
+              </button>
+            )}
           </div>
           <button
             type="button"

@@ -2,8 +2,8 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 // Lazy-loaded pages
-const DashboardPage = lazy(() => import('@/pages/super-admin/DashboardPage').then(m => ({ default: m.DashboardPage })));
-const AbsensiPage = lazy(() => import('@/pages/super-admin/AbsensiPage').then(m => ({ default: m.AbsensiPage })));
+const DashboardPage = lazy(() => import('@/pages/shared/AdminDashboardPage').then(m => ({ default: m.DashboardPage })));
+const AbsensiPage = lazy(() => import('@/pages/user/AbsensiPage').then(m => ({ default: m.AbsensiPage })));
 const TugasPage = lazy(() => import('@/pages/super-admin/TugasPage').then(m => ({ default: m.TugasPage })));
 const PemetaanPage = lazy(() => import('@/pages/super-admin/PemetaanPage').then(m => ({ default: m.PemetaanPage })));
 const ProfilePage = lazy(() => import('@/pages/super-admin/ProfilePage').then(m => ({ default: m.ProfilePage })));
@@ -15,7 +15,7 @@ const PokjaPage = lazy(() => import('@/pages/super-admin/PokjaPage').then(m => (
 
 // Administrator pages
 const AjuanPegawaiPage = lazy(() => import('@/pages/super-admin/AjuanPegawaiPage').then(m => ({ default: m.AjuanPegawaiPage })));
-const RekapPenugasanPage = lazy(() => import('@/pages/super-admin/RekapPenugasanPage').then(m => ({ default: m.RekapPenugasanPage })));
+const RekapPenugasanPage = lazy(() => import('@/pages/shared/RekapPenugasanPage').then(m => ({ default: m.RekapPenugasanPage })));
 
 // Anggota management sub-pages
 const AnggotaPage = lazy(() => import('@/pages/super-admin/AnggotaPage').then(m => ({ default: m.AnggotaPage })));
@@ -25,24 +25,25 @@ const HapusAnggotaPage = lazy(() => import('@/pages/super-admin/HapusAnggotaPage
 
 // Absensi sub-pages
 const LihatAbsensiPage = lazy(() => import('@/pages/super-admin/LihatAbsensiPage').then(m => ({ default: m.LihatAbsensiPage })));
-const VerifikasiAbsensiPage = lazy(() => import('@/pages/super-admin/VerifikasiAbsensiPage').then(m => ({ default: m.VerifikasiAbsensiPage })));
+const VerifikasiAbsensiPage = lazy(() => import('@/pages/approval/ApprovalCutiPage').then(m => ({ default: m.ApprovalCutiPage })));
 const RekapAbsensiPage = lazy(() => import('@/pages/super-admin/RekapAbsensiPage').then(m => ({ default: m.RekapAbsensiPage })));
 
 // Tugas sub-pages
-const BuatTugasPage = lazy(() => import('@/pages/super-admin/BuatTugasPage').then(m => ({ default: m.BuatTugasPage })));
+const BuatTugasPage = lazy(() => import('@/pages/admin/BuatTugasPage').then(m => ({ default: m.BuatTugasPage })));
 const EditTugasPage = lazy(() => import('@/pages/super-admin/EditTugasPage').then(m => ({ default: m.EditTugasPage })));
-const UploadSuratPage = lazy(() => import('@/pages/super-admin/UploadSuratPage').then(m => ({ default: m.UploadSuratPage })));
-const MonitoringTugasPage = lazy(() => import('@/pages/super-admin/MonitoringTugasPage').then(m => ({ default: m.MonitoringTugasPage })));
+const UploadSuratPage = lazy(() => import('@/pages/admin/UploadSuratPage').then(m => ({ default: m.UploadSuratPage })));
+const MonitoringTugasPage = lazy(() => import('@/pages/shared/MonitoringTugasPage').then(m => ({ default: m.MonitoringTugasPage })));
 
 // Other pages
 const LaporanPage = lazy(() => import('@/pages/super-admin/LaporanPage').then(m => ({ default: m.LaporanPage })));
-const SimpananPage = lazy(() => import('@/pages/super-admin/SimpananPage').then(m => ({ default: m.SimpananPage })));
+const SimpananPage = lazy(() => import('@/pages/admin/SimpananPage').then(m => ({ default: m.SimpananPage })));
 
 // Pages retained from previous routes
 const AdminPage = lazy(() => import('@/pages/super-admin/AdminPage').then(m => ({ default: m.AdminPage })));
 const ApprovalPage = lazy(() => import('@/pages/super-admin/ApprovalPage').then(m => ({ default: m.ApprovalPage })));
 const UserPage = lazy(() => import('@/pages/super-admin/UserPage').then(m => ({ default: m.UserPage })));
 const BidangPage = lazy(() => import('@/pages/super-admin/BidangPage').then(m => ({ default: m.BidangPage })));
+const ArsipSuratLaporanPage = lazy(() => import('@/pages/shared/ArsipSuratLaporanPage').then(m => ({ default: m.ArsipSuratLaporanPage })));
 
 const PageLoader = () => (
   <div className="flex h-64 items-center justify-center">
@@ -78,6 +79,7 @@ export const SuperAdminRoutes = () => {
 
         {/* Pemetaan */}
         <Route path="pemetaan" element={<PemetaanPage />} />
+        <Route path="arsip" element={<ArsipSuratLaporanPage />} />
 
         {/* Superadmin Management */}
         <Route path="akun" element={<AkunPage />} />
