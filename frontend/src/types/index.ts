@@ -184,3 +184,40 @@ export interface TemplateSuratResmi {
   diperbaruiPada: string;
   aktif: boolean;
 }
+
+export type JenisPengajuanCuti = 'CUTI' | 'IZIN' | 'SAKIT' | 'DINAS_LUAR';
+export type StatusPengajuanCuti = 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK';
+
+export interface PengajuanCuti {
+  id: string;
+  nama: string;
+  nip: string;
+  unitKerja: string;
+  jabatan?: string;
+  jenis: JenisPengajuanCuti;
+  mulai: string;
+  selesai: string;
+  alasan: string;
+  dokumenLampiran?: string;
+  status: StatusPengajuanCuti;
+  tanggalPengajuan: string;
+  disetujuiOleh?: string;
+  disetujuiPada?: string;
+  catatanPenolakan?: string;
+}
+
+export interface PokjaItem {
+  id: string;
+  kode: string;
+  nama: string;
+}
+
+export interface AppNotificationItem {
+  id: string;
+  targetRole?: string;
+  title: string;
+  desc: string;
+  time: string;
+  unread: boolean;
+  category: string;
+}

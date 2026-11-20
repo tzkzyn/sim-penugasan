@@ -96,7 +96,7 @@ export const PenugasanMap = ({
         const labelLng = polygonBounds.getCenter().lng;
 
         // Buat tooltip permanen layaknya Wikipedia
-        const tooltipLabel = L.tooltip({
+        L.tooltip({
           permanent: true,
           direction: 'center',
           className: 'boundary-label-tooltip',
@@ -114,10 +114,6 @@ export const PenugasanMap = ({
             <p style="font-size: 12px; color: #666; margin: 0;">${loc.alamatLengkap}</p>
           </div>
         `);
-
-        // Keep reference for cleanup
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (polygon as any)._linkedTooltip = tooltipLabel;
       }
 
       // ===== MARKER ICON =====

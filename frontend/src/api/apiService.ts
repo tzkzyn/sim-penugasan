@@ -1,7 +1,14 @@
 import axios from 'axios';
 import { axiosInstance } from './axiosInstance';
 import { dummyAjuanSuratTugas, dummyPegawaiList } from '@/data/dummyData';
-import type { AjuanSuratTugas, Pegawai, TemplateSuratResmi } from '@/types';
+import type {
+  AjuanSuratTugas,
+  AppNotificationItem,
+  Pegawai,
+  PengajuanCuti,
+  PokjaItem,
+  TemplateSuratResmi,
+} from '@/types';
 
 const extractErrorInfo = (error: unknown): { isNetworkError: boolean; message?: string } => {
   if (axios.isAxiosError(error) && error.response) {
@@ -176,7 +183,135 @@ export const apiService = {
     }
   },
 
-  // 7. Auth Login
+  // 7. Pengajuan Cuti (PostgreSQL CRUD)
+  async getCuti() {
+    try {
+      const response = await axiosInstance.get<PengajuanCuti[]>('/cuti');
+      return { success: true as const, data: response.data };
+    } catch {
+      return { success: false as const, fallback: true };
+    }
+  },
+
+  async createCuti(cutiData: Partial<PengajuanCuti>) {
+    try {
+      const response = await axiosInstance.post<PengajuanCuti>('/cuti', cutiData);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  async updateCuti(id: string, cutiData: Partial<PengajuanCuti>) {
+    try {
+      const response = await axiosInstance.patch<PengajuanCuti>(`/cuti/${id}`, cutiData);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  async deleteCuti(id: string) {
+    try {
+      const response = await axiosInstance.delete<PengajuanCuti>(`/cuti/${id}`);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  // 8. Master Pokja (PostgreSQL CRUD)
+  async getPokja() {
+    try {
+      const response = await axiosInstance.get<PokjaItem[]>('/pokja');
+      return { success: true as const, data: response.data };
+    } catch {
+      return { success: false as const, fallback: true };
+    }
+  },
+
+  async createPokja(pokjaData: { kode: string; nama: string; id?: string }) {
+    try {
+      const response = await axiosInstance.post<PokjaItem>('/pokja', pokjaData);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  async updatePokja(id: string, pokjaData: { kode?: string; nama?: string }) {
+    try {
+      const response = await axiosInstance.patch<PokjaItem>(`/pokja/${id}`, pokjaData);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  async deletePokja(id: string) {
+    try {
+      const response = await axiosInstance.delete<PokjaItem>(`/pokja/${id}`);
+      return { success: true as const, data: response.data };
+    } catch (error) {
+      const info = extractErrorInfo(error);
+      return { success: false as const, fallback: info.isNetworkError, message: info.message };
+    }
+  },
+
+  // 9. Notifikasi (PostgreSQL CRUD)
+  async getNotifikasi(role: string) {
+    try {
+      const response = await axiosInstance.get<AppNotificationItem[]>('/notifikasi', {
+        params: { role },
+      });
+      return { success: true as const, data: response.data };
+    } catch {
+      return { success: false as const, fallback: true };
+    }
+  },
+
+  async updateNotifikasi(id: string, unread: boolean) {
+    try {
+      const response = await axiosInstance.patch<AppNotificationItem>(`/notifikasi/${id}`, { unread });
+      return { success: true as const, data: response.data };
+    } catch {
+      return { success: false as const, fallback: true };
+    }
+  },
+
+  async markAllNotifikasiRead(role: string) {
+    try {
+      await axiosInstance.patch('/notifikasi/mark-all-read', null, { params: { role } });
+      return { success: true as const };
+    } catch {
+      return { success: false as const, fallback: true };
+    }
+  },
+
+  async deleteNotifikasi(id: string) {
+    try {
+      await axiosInstance.delete(`/notifikasi/${id}`);
+      return { success: true as const };
+    } catch {
+      return { success: false as const, fallback: true };
+    }
+  },
+
+  async clearNotifikasi(role: string) {
+    try {
+      await axiosInstance.delete('/notifikasi', { params: { role } });
+      return { success: true as const };
+    } catch {
+      return { success: false as const, fallback: true };
+    }
+  },
+
+  // 10. Auth Login
   async login(email: string, password: string) {
     try {
       const response = await axiosInstance.post('/auth/login', { email, password });

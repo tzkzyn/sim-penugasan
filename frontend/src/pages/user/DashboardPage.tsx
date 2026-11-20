@@ -31,6 +31,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { DashboardAjuanDetailModal } from '@/components/ui/DashboardAjuanDetailModal';
+import { DashboardDataStatusBar } from '@/components/ui/DashboardDataStatusBar';
 
 export const DashboardPage = () => {
   const { user } = useAuth();
@@ -132,6 +133,8 @@ export const DashboardPage = () => {
           <span className="font-bold text-slate-800 text-base">{todayFormatted}</span>
         </div>
       </div>
+
+      <DashboardDataStatusBar />
 
       {/* Pintasan Menu Utama (Ramah Pengguna, Langsung Klik dari Dashboard) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -276,7 +279,7 @@ export const DashboardPage = () => {
           />
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
           <div className="rounded-xl bg-slate-50/80 border border-slate-200/60 px-4 py-3">
             <p className="text-[11px] font-medium text-slate-500">Total Tugas</p>
             <p className="text-lg font-bold text-slate-900 mt-0.5">{taskProgress.total}</p>
@@ -311,6 +314,13 @@ export const DashboardPage = () => {
             <p className="text-[11px] font-medium text-amber-700">Dalam Proses</p>
             <p className="text-lg font-bold text-amber-700 mt-0.5">{draftApprovalCount}</p>
           </div>
+          <Link
+            to="/user/arsip?tab=belum-laporan"
+            className="col-span-2 sm:col-span-1 rounded-xl bg-rose-50/70 border border-rose-200/70 px-4 py-3 hover:border-rose-400 transition-colors block"
+          >
+            <p className="text-[11px] font-medium text-rose-700">Laporan Belum Selesai</p>
+            <p className="text-lg font-bold text-rose-700 mt-0.5">{belumLaporanTasks.length}</p>
+          </Link>
         </div>
       </div>
 

@@ -9,7 +9,6 @@ const TugasPage = lazy(() => import('@/pages/admin/TugasPage').then(m => ({ defa
 const PemetaanPage = lazy(() => import('@/pages/super-admin/PemetaanPage').then(m => ({ default: m.PemetaanPage })));
 const NotifikasiPage = lazy(() => import('@/pages/admin/NotifikasiPage').then(m => ({ default: m.NotifikasiPage })));
 const ProfilePage = lazy(() => import('@/pages/admin/ProfilePage').then(m => ({ default: m.ProfilePage })));
-const AjuanPegawaiPage = lazy(() => import('@/pages/admin/AjuanPegawaiPage').then(m => ({ default: m.AjuanPegawaiPage })));
 const RekapPenugasanPage = lazy(() => import('@/pages/shared/RekapPenugasanPage').then(m => ({ default: m.RekapPenugasanPage })));
 
 const DetailPegawaiPage = lazy(() => import('@/pages/admin/DetailPegawaiPage').then(m => ({ default: m.DetailPegawaiPage })));
@@ -35,9 +34,8 @@ export const AdminRoutes = () => {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="anggota" element={<AnggotaPage />} />
         
-        {/* Pegawai / Ajuan */}
+        {/* Pegawai / Template / Rekap */}
         <Route path="pegawai/detail" element={<DetailPegawaiPage />} />
-        <Route path="ajuan-pegawai" element={<AjuanPegawaiPage />} />
         <Route path="template-surat" element={<TemplateSuratPage />} />
         <Route path="rekap-penugasan" element={<RekapPenugasanPage />} />
         

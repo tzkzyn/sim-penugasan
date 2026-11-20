@@ -63,6 +63,47 @@ export interface TemplateSuratEntity {
   [key: string]: unknown;
 }
 
+export interface PengajuanCutiEntity {
+  id: string;
+  nama: string;
+  nip: string;
+  unitKerja: string;
+  jabatan?: string;
+  jenis: 'CUTI' | 'IZIN' | 'SAKIT' | 'DINAS_LUAR';
+  mulai: string;
+  selesai: string;
+  alasan: string;
+  dokumenLampiran?: string;
+  status: 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK';
+  tanggalPengajuan: string;
+  disetujuiOleh?: string;
+  disetujuiPada?: string;
+  catatanPenolakan?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface PokjaEntity {
+  id: string;
+  kode: string;
+  nama: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface NotifikasiEntity {
+  id: string;
+  targetRole: string;
+  title: string;
+  desc: string;
+  time: string;
+  unread: boolean;
+  category: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 const VALID_UNITS = new Set<UnitKerjaBackend>([
   'RBI',
   'Fastingkom',
@@ -296,10 +337,16 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private inMemoryTasks: SuratTugasEntity[] = [];
   private inMemoryPegawai: PegawaiEntity[] = [...DEFAULT_PEGAWAI_SEED];
   private inMemoryTemplates: TemplateSuratEntity[] = [];
+  private inMemoryCuti: PengajuanCutiEntity[] = [];
+  private inMemoryPokja: PokjaEntity[] = [];
+  private inMemoryNotifikasi: NotifikasiEntity[] = [];
   private readonly backendRoot: string;
   private readonly tasksStorageFile: string;
   private readonly pegawaiStorageFile: string;
   private readonly templatesStorageFile: string;
+  private readonly cutiStorageFile: string;
+  private readonly pokjaStorageFile: string;
+  private readonly notifikasiStorageFile: string;
 
   constructor() {
     this.backendRoot = resolveBackendRoot();
@@ -313,9 +360,18 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
       this.backendRoot,
       'templates_storage.json',
     );
+    this.cutiStorageFile = path.join(this.backendRoot, 'cuti_storage.json');
+    this.pokjaStorageFile = path.join(this.backendRoot, 'pokja_storage.json');
+    this.notifikasiStorageFile = path.join(
+      this.backendRoot,
+      'notifikasi_storage.json',
+    );
     this.loadTaskStorage();
     this.loadPegawaiStorage();
     this.loadTemplateStorage();
+    this.loadCutiStorage();
+    this.loadPokjaStorage();
+    this.loadNotifikasiStorage();
   }
 
   private loadTaskStorage() {
@@ -395,6 +451,84 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
       );
     } catch (e) {
       console.error('[Storage] Gagal menyimpan templates_storage.json:', e);
+    }
+  }
+
+  private loadCutiStorage() {
+    try {
+      if (fs.existsSync(this.cutiStorageFile)) {
+        const data = fs.readFileSync(this.cutiStorageFile, 'utf-8');
+        const parsed: unknown = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          this.inMemoryCuti = parsed as PengajuanCutiEntity[];
+        }
+      }
+    } catch {
+      this.inMemoryCuti = [];
+    }
+  }
+
+  private saveCutiStorage() {
+    try {
+      fs.writeFileSync(
+        this.cutiStorageFile,
+        JSON.stringify(this.inMemoryCuti, null, 2),
+        'utf-8',
+      );
+    } catch (e) {
+      console.error('[Storage] Gagal menyimpan cuti_storage.json:', e);
+    }
+  }
+
+  private loadPokjaStorage() {
+    try {
+      if (fs.existsSync(this.pokjaStorageFile)) {
+        const data = fs.readFileSync(this.pokjaStorageFile, 'utf-8');
+        const parsed: unknown = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          this.inMemoryPokja = parsed as PokjaEntity[];
+        }
+      }
+    } catch {
+      this.inMemoryPokja = [];
+    }
+  }
+
+  private savePokjaStorage() {
+    try {
+      fs.writeFileSync(
+        this.pokjaStorageFile,
+        JSON.stringify(this.inMemoryPokja, null, 2),
+        'utf-8',
+      );
+    } catch (e) {
+      console.error('[Storage] Gagal menyimpan pokja_storage.json:', e);
+    }
+  }
+
+  private loadNotifikasiStorage() {
+    try {
+      if (fs.existsSync(this.notifikasiStorageFile)) {
+        const data = fs.readFileSync(this.notifikasiStorageFile, 'utf-8');
+        const parsed: unknown = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          this.inMemoryNotifikasi = parsed as NotifikasiEntity[];
+        }
+      }
+    } catch {
+      this.inMemoryNotifikasi = [];
+    }
+  }
+
+  private saveNotifikasiStorage() {
+    try {
+      fs.writeFileSync(
+        this.notifikasiStorageFile,
+        JSON.stringify(this.inMemoryNotifikasi, null, 2),
+        'utf-8',
+      );
+    } catch (e) {
+      console.error('[Storage] Gagal menyimpan notifikasi_storage.json:', e);
     }
   }
 
@@ -495,6 +629,46 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
           kategori_template VARCHAR(50) NOT NULL DEFAULT 'INDIVIDU',
           aktif BOOLEAN NOT NULL DEFAULT TRUE,
           payload JSONB NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS pengajuan_cuti (
+          id VARCHAR(64) PRIMARY KEY,
+          nip VARCHAR(64) NOT NULL,
+          nama VARCHAR(200) NOT NULL,
+          unit_kerja VARCHAR(50) NOT NULL,
+          jenis VARCHAR(30) NOT NULL,
+          mulai VARCHAR(20) NOT NULL,
+          selesai VARCHAR(20) NOT NULL,
+          status VARCHAR(30) NOT NULL DEFAULT 'MENUNGGU',
+          payload JSONB NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS pokja (
+          id VARCHAR(64) PRIMARY KEY,
+          kode VARCHAR(50) NOT NULL UNIQUE,
+          nama VARCHAR(200) NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS notifikasi (
+          id VARCHAR(64) PRIMARY KEY,
+          target_role VARCHAR(30) NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL,
+          time_label VARCHAR(100) NOT NULL,
+          unread BOOLEAN NOT NULL DEFAULT TRUE,
+          category VARCHAR(50) NOT NULL DEFAULT 'SISTEM',
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
@@ -1257,6 +1431,481 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
           return removed;
         }
         return null;
+      },
+    };
+  }
+
+  private parseCutiPayloadRow(payload: unknown): PengajuanCutiEntity {
+    if (typeof payload === 'string') {
+      return JSON.parse(payload) as PengajuanCutiEntity;
+    }
+    return payload as PengajuanCutiEntity;
+  }
+
+  get cuti() {
+    return {
+      findMany: async (): Promise<PengajuanCutiEntity[]> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            SELECT payload FROM pengajuan_cuti ORDER BY created_at DESC
+          `;
+          return rows.map((row) => this.parseCutiPayloadRow(row.payload));
+        }
+        this.loadCutiStorage();
+        return [...this.inMemoryCuti];
+      },
+
+      findUnique: async (args: {
+        where: { id: string };
+      }): Promise<PengajuanCutiEntity | null> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            SELECT payload FROM pengajuan_cuti WHERE id = ${args.where.id} LIMIT 1
+          `;
+          return rows[0] ? this.parseCutiPayloadRow(rows[0].payload) : null;
+        }
+        this.loadCutiStorage();
+        return this.inMemoryCuti.find((item) => item.id === args.where.id) || null;
+      },
+
+      create: async (args: {
+        data: Record<string, unknown>;
+      }): Promise<PengajuanCutiEntity> => {
+        await this.ensureInitialized();
+        const nowIso = new Date().toISOString();
+        const jenisRaw = asText(args.data.jenis, 'CUTI').toUpperCase();
+        const jenis: PengajuanCutiEntity['jenis'] =
+          jenisRaw === 'IZIN' || jenisRaw === 'SAKIT' || jenisRaw === 'DINAS_LUAR'
+            ? jenisRaw
+            : 'CUTI';
+        const statusRaw = asText(args.data.status, 'MENUNGGU').toUpperCase();
+        const status: PengajuanCutiEntity['status'] =
+          statusRaw === 'DISETUJUI' || statusRaw === 'DITOLAK'
+            ? statusRaw
+            : 'MENUNGGU';
+
+        const newCuti: PengajuanCutiEntity = {
+          ...(args.data as Partial<PengajuanCutiEntity>),
+          id:
+            typeof args.data.id === 'string' && args.data.id.trim()
+              ? args.data.id.trim()
+              : `cuti-${Date.now()}`,
+          nama: asText(args.data.nama, 'Pegawai'),
+          nip: asText(args.data.nip),
+          unitKerja: normalizeUnitKerja(args.data.unitKerja),
+          jenis,
+          mulai: asText(args.data.mulai),
+          selesai: asText(args.data.selesai),
+          alasan: asText(args.data.alasan),
+          status,
+          tanggalPengajuan: asText(args.data.tanggalPengajuan, nowIso.slice(0, 10)),
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            INSERT INTO pengajuan_cuti (
+              id, nip, nama, unit_kerja, jenis, mulai, selesai, status, payload
+            ) VALUES (
+              ${newCuti.id},
+              ${newCuti.nip},
+              ${newCuti.nama},
+              ${newCuti.unitKerja},
+              ${newCuti.jenis},
+              ${newCuti.mulai},
+              ${newCuti.selesai},
+              ${newCuti.status},
+              ${this.pgSql.json(newCuti as postgres.JSONValue)}
+            )
+            RETURNING payload
+          `;
+          return this.parseCutiPayloadRow(rows[0].payload);
+        }
+
+        this.loadCutiStorage();
+        this.inMemoryCuti.unshift(newCuti);
+        this.saveCutiStorage();
+        return newCuti;
+      },
+
+      update: async (args: {
+        where: { id: string };
+        data: Record<string, unknown>;
+      }): Promise<PengajuanCutiEntity | null> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const existing = await this.cuti.findUnique({ where: { id: args.where.id } });
+          if (!existing) return null;
+
+          const updatedCuti: PengajuanCutiEntity = {
+            ...existing,
+            ...(args.data as Partial<PengajuanCutiEntity>),
+            id: existing.id,
+            updatedAt: new Date().toISOString(),
+          };
+
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            UPDATE pengajuan_cuti
+            SET
+              status = ${String(updatedCuti.status || 'MENUNGGU')},
+              payload = ${this.pgSql.json(updatedCuti as postgres.JSONValue)},
+              updated_at = NOW()
+            WHERE id = ${args.where.id}
+            RETURNING payload
+          `;
+          return rows[0] ? this.parseCutiPayloadRow(rows[0].payload) : null;
+        }
+
+        this.loadCutiStorage();
+        const index = this.inMemoryCuti.findIndex((item) => item.id === args.where.id);
+        if (index !== -1) {
+          this.inMemoryCuti[index] = {
+            ...this.inMemoryCuti[index],
+            ...(args.data as Partial<PengajuanCutiEntity>),
+            updatedAt: new Date().toISOString(),
+          };
+          this.saveCutiStorage();
+          return this.inMemoryCuti[index];
+        }
+        return null;
+      },
+
+      delete: async (args: {
+        where: { id: string };
+      }): Promise<PengajuanCutiEntity | null> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ payload: unknown }[]>`
+            DELETE FROM pengajuan_cuti WHERE id = ${args.where.id} RETURNING payload
+          `;
+          return rows[0] ? this.parseCutiPayloadRow(rows[0].payload) : null;
+        }
+
+        this.loadCutiStorage();
+        const index = this.inMemoryCuti.findIndex((item) => item.id === args.where.id);
+        if (index !== -1) {
+          const removed = this.inMemoryCuti.splice(index, 1)[0];
+          this.saveCutiStorage();
+          return removed;
+        }
+        return null;
+      },
+    };
+  }
+
+  get pokja() {
+    return {
+      findMany: async (): Promise<PokjaEntity[]> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<
+            { id: string; kode: string; nama: string; created_at: Date; updated_at: Date }[]
+          >`
+            SELECT id, kode, nama, created_at, updated_at FROM pokja ORDER BY kode ASC
+          `;
+          return rows.map((r) => ({
+            id: r.id,
+            kode: r.kode,
+            nama: r.nama,
+            createdAt: r.created_at?.toISOString(),
+            updatedAt: r.updated_at?.toISOString(),
+          }));
+        }
+        this.loadPokjaStorage();
+        return [...this.inMemoryPokja];
+      },
+
+      create: async (args: {
+        data: { id?: string; kode: string; nama: string };
+      }): Promise<PokjaEntity> => {
+        await this.ensureInitialized();
+        const kode = args.data.kode.trim().toUpperCase();
+        const nama = args.data.nama.trim();
+        const id = args.data.id?.trim() || `pokja-${Date.now()}`;
+        const nowIso = new Date().toISOString();
+
+        if (this.pgReady && this.pgSql) {
+          const existing = await this.pgSql<{ id: string }[]>`
+            SELECT id FROM pokja WHERE UPPER(kode) = ${kode} LIMIT 1
+          `;
+          if (existing.length > 0) {
+            throw new ConflictException(`Kode POKJA "${kode}" sudah digunakan.`);
+          }
+          await this.pgSql`
+            INSERT INTO pokja (id, kode, nama) VALUES (${id}, ${kode}, ${nama})
+          `;
+          return { id, kode, nama, createdAt: nowIso, updatedAt: nowIso };
+        }
+
+        this.loadPokjaStorage();
+        if (this.inMemoryPokja.some((p) => p.kode.toUpperCase() === kode)) {
+          throw new ConflictException(`Kode POKJA "${kode}" sudah digunakan.`);
+        }
+        const created: PokjaEntity = { id, kode, nama, createdAt: nowIso, updatedAt: nowIso };
+        this.inMemoryPokja.push(created);
+        this.savePokjaStorage();
+        return created;
+      },
+
+      update: async (args: {
+        where: { id: string };
+        data: { kode?: string; nama?: string };
+      }): Promise<PokjaEntity | null> => {
+        await this.ensureInitialized();
+        const kode = args.data.kode?.trim().toUpperCase();
+        const nama = args.data.nama?.trim();
+        const nowIso = new Date().toISOString();
+
+        if (this.pgReady && this.pgSql) {
+          const currentRows = await this.pgSql<{ id: string; kode: string; nama: string }[]>`
+            SELECT id, kode, nama FROM pokja WHERE id = ${args.where.id} LIMIT 1
+          `;
+          if (!currentRows[0]) return null;
+          const nextKode = kode || currentRows[0].kode;
+          const nextNama = nama || currentRows[0].nama;
+
+          const dup = await this.pgSql<{ id: string }[]>`
+            SELECT id FROM pokja WHERE UPPER(kode) = ${nextKode} AND id <> ${args.where.id} LIMIT 1
+          `;
+          if (dup.length > 0) {
+            throw new ConflictException(`Kode POKJA "${nextKode}" sudah digunakan.`);
+          }
+
+          await this.pgSql`
+            UPDATE pokja SET kode = ${nextKode}, nama = ${nextNama}, updated_at = NOW()
+            WHERE id = ${args.where.id}
+          `;
+          return { id: args.where.id, kode: nextKode, nama: nextNama, updatedAt: nowIso };
+        }
+
+        this.loadPokjaStorage();
+        const idx = this.inMemoryPokja.findIndex((p) => p.id === args.where.id);
+        if (idx === -1) return null;
+        const nextKode = kode || this.inMemoryPokja[idx].kode;
+        const nextNama = nama || this.inMemoryPokja[idx].nama;
+        if (this.inMemoryPokja.some((p) => p.kode.toUpperCase() === nextKode && p.id !== args.where.id)) {
+          throw new ConflictException(`Kode POKJA "${nextKode}" sudah digunakan.`);
+        }
+        this.inMemoryPokja[idx] = { ...this.inMemoryPokja[idx], kode: nextKode, nama: nextNama, updatedAt: nowIso };
+        this.savePokjaStorage();
+        return this.inMemoryPokja[idx];
+      },
+
+      delete: async (args: { where: { id: string } }): Promise<PokjaEntity | null> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ id: string; kode: string; nama: string }[]>`
+            DELETE FROM pokja WHERE id = ${args.where.id} RETURNING id, kode, nama
+          `;
+          return rows[0] ? { id: rows[0].id, kode: rows[0].kode, nama: rows[0].nama } : null;
+        }
+        this.loadPokjaStorage();
+        const idx = this.inMemoryPokja.findIndex((p) => p.id === args.where.id);
+        if (idx === -1) return null;
+        const removed = this.inMemoryPokja.splice(idx, 1)[0];
+        this.savePokjaStorage();
+        return removed;
+      },
+    };
+  }
+
+  get notifikasi() {
+    return {
+      findMany: async (targetRole?: string): Promise<NotifikasiEntity[]> => {
+        await this.ensureInitialized();
+        const roleFilter = targetRole?.trim().toUpperCase();
+        if (this.pgReady && this.pgSql) {
+          const rows = roleFilter
+            ? await this.pgSql<
+                {
+                  id: string;
+                  target_role: string;
+                  title: string;
+                  description: string;
+                  time_label: string;
+                  unread: boolean;
+                  category: string;
+                }[]
+              >`
+                SELECT id, target_role, title, description, time_label, unread, category
+                FROM notifikasi
+                WHERE UPPER(target_role) = ${roleFilter}
+                ORDER BY created_at DESC
+              `
+            : await this.pgSql<
+                {
+                  id: string;
+                  target_role: string;
+                  title: string;
+                  description: string;
+                  time_label: string;
+                  unread: boolean;
+                  category: string;
+                }[]
+              >`
+                SELECT id, target_role, title, description, time_label, unread, category
+                FROM notifikasi
+                ORDER BY created_at DESC
+              `;
+          return rows.map((r) => ({
+            id: r.id,
+            targetRole: r.target_role,
+            title: r.title,
+            desc: r.description,
+            time: r.time_label,
+            unread: r.unread,
+            category: r.category,
+          }));
+        }
+        this.loadNotifikasiStorage();
+        return roleFilter
+          ? this.inMemoryNotifikasi.filter((n) => n.targetRole.toUpperCase() === roleFilter)
+          : [...this.inMemoryNotifikasi];
+      },
+
+      create: async (args: {
+        data: Partial<NotifikasiEntity>;
+      }): Promise<NotifikasiEntity> => {
+        await this.ensureInitialized();
+        const created: NotifikasiEntity = {
+          id: args.data.id?.trim() || `notif-${Date.now()}`,
+          targetRole: (args.data.targetRole || 'USER').toUpperCase(),
+          title: asText(args.data.title, 'Notifikasi'),
+          desc: asText(args.data.desc),
+          time: asText(args.data.time, 'Baru saja'),
+          unread: args.data.unread !== undefined ? Boolean(args.data.unread) : true,
+          category: asText(args.data.category, 'SISTEM'),
+        };
+
+        if (this.pgReady && this.pgSql) {
+          await this.pgSql`
+            INSERT INTO notifikasi (
+              id, target_role, title, description, time_label, unread, category
+            ) VALUES (
+              ${created.id},
+              ${created.targetRole},
+              ${created.title},
+              ${created.desc},
+              ${created.time},
+              ${created.unread},
+              ${created.category}
+            )
+          `;
+          return created;
+        }
+
+        this.loadNotifikasiStorage();
+        this.inMemoryNotifikasi.unshift(created);
+        this.saveNotifikasiStorage();
+        return created;
+      },
+
+      update: async (args: {
+        where: { id: string };
+        data: { unread?: boolean };
+      }): Promise<NotifikasiEntity | null> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<
+            {
+              id: string;
+              target_role: string;
+              title: string;
+              description: string;
+              time_label: string;
+              unread: boolean;
+              category: string;
+            }[]
+          >`
+            UPDATE notifikasi
+            SET unread = ${Boolean(args.data.unread)}, updated_at = NOW()
+            WHERE id = ${args.where.id}
+            RETURNING id, target_role, title, description, time_label, unread, category
+          `;
+          const r = rows[0];
+          return r
+            ? {
+                id: r.id,
+                targetRole: r.target_role,
+                title: r.title,
+                desc: r.description,
+                time: r.time_label,
+                unread: r.unread,
+                category: r.category,
+              }
+            : null;
+        }
+
+        this.loadNotifikasiStorage();
+        const idx = this.inMemoryNotifikasi.findIndex((n) => n.id === args.where.id);
+        if (idx === -1) return null;
+        this.inMemoryNotifikasi[idx] = {
+          ...this.inMemoryNotifikasi[idx],
+          unread: Boolean(args.data.unread),
+        };
+        this.saveNotifikasiStorage();
+        return this.inMemoryNotifikasi[idx];
+      },
+
+      markAllRead: async (targetRole?: string): Promise<void> => {
+        await this.ensureInitialized();
+        const roleFilter = targetRole?.trim().toUpperCase();
+        if (this.pgReady && this.pgSql) {
+          if (roleFilter) {
+            await this.pgSql`
+              UPDATE notifikasi SET unread = FALSE, updated_at = NOW()
+              WHERE UPPER(target_role) = ${roleFilter}
+            `;
+          } else {
+            await this.pgSql`UPDATE notifikasi SET unread = FALSE, updated_at = NOW()`;
+          }
+          return;
+        }
+        this.loadNotifikasiStorage();
+        this.inMemoryNotifikasi = this.inMemoryNotifikasi.map((n) =>
+          !roleFilter || n.targetRole.toUpperCase() === roleFilter
+            ? { ...n, unread: false }
+            : n,
+        );
+        this.saveNotifikasiStorage();
+      },
+
+      delete: async (args: { where: { id: string } }): Promise<boolean> => {
+        await this.ensureInitialized();
+        if (this.pgReady && this.pgSql) {
+          const rows = await this.pgSql<{ id: string }[]>`
+            DELETE FROM notifikasi WHERE id = ${args.where.id} RETURNING id
+          `;
+          return rows.length > 0;
+        }
+        this.loadNotifikasiStorage();
+        const before = this.inMemoryNotifikasi.length;
+        this.inMemoryNotifikasi = this.inMemoryNotifikasi.filter((n) => n.id !== args.where.id);
+        this.saveNotifikasiStorage();
+        return this.inMemoryNotifikasi.length < before;
+      },
+
+      clearAll: async (targetRole?: string): Promise<void> => {
+        await this.ensureInitialized();
+        const roleFilter = targetRole?.trim().toUpperCase();
+        if (this.pgReady && this.pgSql) {
+          if (roleFilter) {
+            await this.pgSql`
+              DELETE FROM notifikasi WHERE UPPER(target_role) = ${roleFilter}
+            `;
+          } else {
+            await this.pgSql`DELETE FROM notifikasi`;
+          }
+          return;
+        }
+        this.loadNotifikasiStorage();
+        this.inMemoryNotifikasi = roleFilter
+          ? this.inMemoryNotifikasi.filter((n) => n.targetRole.toUpperCase() !== roleFilter)
+          : [];
+        this.saveNotifikasiStorage();
       },
     };
   }

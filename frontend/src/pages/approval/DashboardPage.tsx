@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { formatDate } from '@/utils/formatter';
 import { useAuth } from '@/hooks/useAuth';
+import { apiService } from '@/api/apiService';
 import { usePenugasan } from '@/context/PenugasanContext';
 import {
   UNIT_COLORS,
 } from '@/data/dummyData';
-import type { AjuanSuratTugas } from '@/types';
+import type { AjuanSuratTugas, StatusSuratTugas } from '@/types';
 import { Link } from 'react-router-dom';
+import { DashboardDataStatusBar } from '@/components/ui/DashboardDataStatusBar';
 import {
   FileText,
   MapPin,
@@ -16,7 +18,33 @@ import {
   FileCheck,
   CheckCircle2,
   CalendarCheck,
+  Eye,
 } from 'lucide-react';
+
+type DashboardTableFilter = 'PENDING' | 'DRAFT' | 'APPROVED' | 'REJECTED' | 'ALL';
+
+const STATUS_META: Record<StatusSuratTugas, { label: string; badgeClass: string }> = {
+  DRAFT: {
+    label: 'Draft',
+    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+  },
+  VERIFIKASI_SUBBAGIAN: {
+    label: 'Menunggu Approval',
+    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200/60',
+  },
+  PERSETUJUAN_PIMPINAN: {
+    label: 'Menunggu Approval',
+    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200/60',
+  },
+  SURAT_TERBIT: {
+    label: 'Disetujui',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+  },
+  DITOLAK: {
+    label: 'Ditolak',
+    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200/60',
+  },
+};
 
 export const DashboardPage = () => {
   const { user } = useAuth();
@@ -25,14 +53,25 @@ export const DashboardPage = () => {
 
   const [selectedAjuan, setSelectedAjuan] = useState<AjuanSuratTugas | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tableFilter, setTableFilter] = useState<'ALL' | 'APPROVED' | 'PENDING'>('ALL');
+  const [tableFilter, setTableFilter] = useState<DashboardTableFilter>('PENDING');
   const [pendingCutiCount, setPendingCutiCount] = useState(0);
 
   useEffect(() => {
-    const checkCuti = () => {
+    let active = true;
+    const checkCuti = async () => {
+      const res = await apiService.getCuti();
+      if (active && res.success && Array.isArray(res.data)) {
+        setPendingCutiCount(res.data.filter((p) => p.status === 'MENUNGGU').length);
+        try {
+          localStorage.setItem('sim_pengajuan_cuti', JSON.stringify(res.data));
+        } catch {
+          // ignore
+        }
+        return;
+      }
       try {
         const saved = localStorage.getItem('sim_pengajuan_cuti');
-        if (saved) {
+        if (active && saved) {
           const parsed: unknown = JSON.parse(saved);
           if (Array.isArray(parsed)) {
             setPendingCutiCount(
@@ -47,23 +86,50 @@ export const DashboardPage = () => {
         // ignore invalid localStorage data
       }
     };
-    checkCuti();
+    void checkCuti();
     window.addEventListener('storage', checkCuti);
-    const interval = setInterval(checkCuti, 3000);
+    const interval = setInterval(() => {
+      void checkCuti();
+    }, 10000);
     return () => {
+      active = false;
       window.removeEventListener('storage', checkCuti);
       clearInterval(interval);
     };
   }, []);
   const myUnitData = tasks;
 
-  const recentAjuan = myUnitData.filter((item) => {
-    if (tableFilter === 'APPROVED' && item.status !== 'SURAT_TERBIT') return false;
-    if (tableFilter === 'PENDING' && item.status !== 'VERIFIKASI_SUBBAGIAN' && item.status !== 'PERSETUJUAN_PIMPINAN' && item.status !== 'DRAFT') return false;
-    return true;
-  }).slice(0, 8);
-  const approvedLettersCount = myUnitData.filter(item => item.status === 'SURAT_TERBIT').length;
-  const pendingLettersCount = myUnitData.filter(item => item.status === 'VERIFIKASI_SUBBAGIAN' || item.status === 'PERSETUJUAN_PIMPINAN' || item.status === 'DRAFT').length;
+  const approvedLettersCount = myUnitData.filter((item) => item.status === 'SURAT_TERBIT').length;
+  const pendingLettersCount = myUnitData.filter(
+    (item) => item.status === 'VERIFIKASI_SUBBAGIAN' || item.status === 'PERSETUJUAN_PIMPINAN'
+  ).length;
+  const draftLettersCount = myUnitData.filter((item) => item.status === 'DRAFT').length;
+  const rejectedLettersCount = myUnitData.filter((item) => item.status === 'DITOLAK').length;
+  const belumLaporanCount = myUnitData.filter(
+    (item) =>
+      item.status === 'SURAT_TERBIT' &&
+      !(item.fileLaporanUrl || item.fileLaporanNama || item.tanggalLaporan)
+  ).length;
+
+  const recentAjuan = myUnitData
+    .filter((item) => {
+      if (tableFilter === 'APPROVED') return item.status === 'SURAT_TERBIT';
+      if (tableFilter === 'PENDING') {
+        return item.status === 'VERIFIKASI_SUBBAGIAN' || item.status === 'PERSETUJUAN_PIMPINAN';
+      }
+      if (tableFilter === 'DRAFT') return item.status === 'DRAFT';
+      if (tableFilter === 'REJECTED') return item.status === 'DITOLAK';
+      return true;
+    })
+    .slice(0, 8);
+
+  const filterTabs: { id: DashboardTableFilter; label: string; count: number }[] = [
+    { id: 'PENDING', label: 'Menunggu Approval', count: pendingLettersCount },
+    { id: 'DRAFT', label: 'Draft', count: draftLettersCount },
+    { id: 'APPROVED', label: 'Disetujui', count: approvedLettersCount },
+    { id: 'REJECTED', label: 'Ditolak', count: rejectedLettersCount },
+    { id: 'ALL', label: 'Semua', count: myUnitData.length },
+  ];
 
   const formatLokasiDisplay = (lokasi?: string | null) => {
     const cleaned = (lokasi ?? '').trim();
@@ -102,8 +168,10 @@ export const DashboardPage = () => {
         </div>
       </div>
 
+      <DashboardDataStatusBar />
+
       {/* Executive Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <button
           onClick={() => setTableFilter(prev => prev === 'APPROVED' ? 'ALL' : 'APPROVED')}
           className={`text-left p-6 rounded-2xl border shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] transition-all flex items-start justify-between gap-4 focus:outline-none cursor-pointer ${
@@ -141,6 +209,20 @@ export const DashboardPage = () => {
         </button>
 
         <Link
+          to="/approval/arsip?tab=belum-laporan"
+          className="text-left p-6 rounded-2xl border border-slate-200/70 bg-white hover:border-rose-200 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] transition-all flex items-start justify-between gap-4"
+        >
+          <div className="min-w-0">
+            <span className="text-sm font-medium text-slate-500 block">Laporan Belum Selesai</span>
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight mt-1 block">{belumLaporanCount}</span>
+            <span className="text-xs text-slate-400 mt-1 block">Cek di Arsip Laporan</span>
+          </div>
+          <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 bg-rose-50 text-rose-500">
+            <FileText className="w-5 h-5" />
+          </div>
+        </Link>
+
+        <Link
           to="/approval/approval-cuti"
           className="text-left p-6 rounded-2xl border border-slate-200/70 bg-white hover:border-emerald-200 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] transition-all flex items-start justify-between gap-4"
         >
@@ -157,17 +239,52 @@ export const DashboardPage = () => {
 
       {/* Ajuan Surat Tugas Terbaru (Full-width) */}
       <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
             <FileText className="w-4 h-4 text-[#5D87FF]" />
-            {tableFilter === 'APPROVED' ? 'Surat Tugas Disetujui' : tableFilter === 'PENDING' ? 'Surat Tugas Butuh Approval' : 'Proses Ajuan Surat Tugas Terbaru'}
+            {tableFilter === 'APPROVED'
+              ? 'Surat Tugas Disetujui'
+              : tableFilter === 'PENDING'
+                ? 'Surat Tugas Butuh Approval'
+                : tableFilter === 'DRAFT'
+                  ? 'Draft Surat Tugas'
+                  : tableFilter === 'REJECTED'
+                    ? 'Surat Tugas Ditolak'
+                    : 'Proses Ajuan Surat Tugas Terbaru'}
           </h3>
           <Link
-            to="/tugas"
-            className="inline-flex items-center rounded-full border border-[#5D87FF]/25 bg-[#ECF2FF] px-3 py-1 text-xs font-bold text-[#5D87FF] hover:bg-blue-100 transition-colors"
+            to="/approval/approval-tugas"
+            className="inline-flex w-fit items-center rounded-full border border-[#5D87FF]/25 bg-[#ECF2FF] px-3 py-1 text-xs font-bold text-[#5D87FF] hover:bg-blue-100 transition-colors"
           >
             Lihat Semua
           </Link>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {filterTabs.map((tab) => {
+            const isActive = tableFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setTableFilter(tab.id)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                  isActive
+                    ? 'bg-[#5D87FF] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-500'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="overflow-x-auto">
@@ -177,22 +294,22 @@ export const DashboardPage = () => {
                 <th className="py-3 px-4 font-semibold text-xs uppercase tracking-wider">No. Surat / Perihal</th>
                 <th className="py-3 px-4 font-semibold text-xs uppercase tracking-wider">Status</th>
                 <th className="py-3 px-4 font-semibold text-xs uppercase tracking-wider">Unit &amp; Lokasi</th>
+                <th className="py-3 px-4 font-semibold text-xs uppercase tracking-wider whitespace-nowrap">Tanggal</th>
+                <th className="py-3 px-4 font-semibold text-xs uppercase tracking-wider text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {recentAjuan.map((item) => {
                 const unitColor = UNIT_COLORS[item.unitKerja] || { bg: 'bg-slate-100', text: 'text-slate-800' };
+                const statusMeta = STATUS_META[item.status] ?? {
+                  label: item.status,
+                  badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+                };
                 const statusIsApproved = item.status === 'SURAT_TERBIT';
                 const statusIsRejected = item.status === 'DITOLAK';
-                const statusLabel = statusIsApproved ? 'Disetujui' : statusIsRejected ? 'Ditolak' : 'Diproses';
-                const statusBadgeClass = statusIsApproved
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
-                  : statusIsRejected
-                    ? 'bg-rose-50 text-rose-700 border-rose-200/60'
-                    : 'bg-amber-50 text-amber-700 border-amber-200/60';
 
                 return (
-                  <tr 
+                  <tr
                     key={item.id}
                     onClick={() => {
                       setSelectedAjuan(item);
@@ -205,15 +322,17 @@ export const DashboardPage = () => {
                       <div className="font-medium text-slate-800 line-clamp-1">{item.perihal}</div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${statusBadgeClass}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border whitespace-nowrap ${statusMeta.badgeClass}`}>
                         {statusIsApproved ? (
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         ) : statusIsRejected ? (
                           <X className="w-3.5 h-3.5" />
+                        ) : item.status === 'DRAFT' ? (
+                          <FileText className="w-3.5 h-3.5" />
                         ) : (
                           <Clock className="w-3.5 h-3.5" />
                         )}
-                        {statusLabel}
+                        {statusMeta.label}
                       </span>
                     </td>
                     <td className="py-3 px-4">
@@ -227,9 +346,42 @@ export const DashboardPage = () => {
                         </span>
                       </div>
                     </td>
+                    <td className="py-3 px-4 text-xs text-slate-500 whitespace-nowrap">
+                      {item.tanggalMulai ? formatDate(item.tanggalMulai) : '-'}
+                    </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedAjuan(item);
+                          setIsModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:border-[#5D87FF] hover:text-[#5D87FF] transition-colors cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Tinjau
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
+              {recentAjuan.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-10 text-center text-xs text-slate-500">
+                    <div>Tidak ada data surat tugas pada kategori ini.</div>
+                    {tableFilter !== 'ALL' && (
+                      <button
+                        type="button"
+                        onClick={() => setTableFilter('ALL')}
+                        className="mt-2 inline-flex items-center rounded-full bg-[#ECF2FF] px-3 py-1 text-xs font-semibold text-[#5D87FF] hover:bg-blue-100 transition-colors cursor-pointer"
+                      >
+                        Tampilkan Semua Ajuan
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

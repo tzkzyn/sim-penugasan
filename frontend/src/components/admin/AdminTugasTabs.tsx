@@ -10,6 +10,7 @@ import {
   Download,
   CheckCircle2,
   Clock,
+  Send,
 } from 'lucide-react';
 import { format, isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -100,10 +101,12 @@ const GenericTaskTable = ({
   tasks,
   emptyMsg,
   onPrint,
+  onSendToApproval,
 }: {
   tasks: AjuanSuratTugas[];
   emptyMsg: string;
   onPrint?: (task: AjuanSuratTugas) => void;
+  onSendToApproval?: (task: AjuanSuratTugas) => void;
 }) => (
   <div className="overflow-x-auto">
     <table className="w-full text-left text-sm">
@@ -174,6 +177,16 @@ const GenericTaskTable = ({
                       title="Unduh berkas laporan pegawai"
                     >
                       <Download className="w-3.5 h-3.5" /> Unduh
+                    </button>
+                  )}
+                  {t.status === 'DRAFT' && onSendToApproval && (
+                    <button
+                      type="button"
+                      onClick={() => onSendToApproval(t)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#5D87FF] text-white hover:bg-[#4B74E8] text-xs font-semibold transition cursor-pointer"
+                      title="Ajukan surat tugas ke Pimpinan untuk disetujui"
+                    >
+                      <Send className="w-3.5 h-3.5" /> Kirim ke Pimpinan
                     </button>
                   )}
                   {onPrint && (
@@ -469,8 +482,15 @@ export const PenugasanBerlangsungTab = ({ onPrint }: { onPrint?: (t: AjuanSuratT
 };
 
 export const DraftPenugasanTab = ({ onPrint }: { onPrint?: (t: AjuanSuratTugas) => void }) => {
-  const { tasks } = usePenugasan();
-  return <GenericTaskTable tasks={tasks.filter((t) => t.status === 'DRAFT')} emptyMsg="Tidak ada draft penugasan." onPrint={onPrint} />;
+  const { tasks, updateTaskStatus } = usePenugasan();
+  return (
+    <GenericTaskTable
+      tasks={tasks.filter((t) => t.status === 'DRAFT')}
+      emptyMsg="Tidak ada draft penugasan."
+      onPrint={onPrint}
+      onSendToApproval={(t) => void updateTaskStatus(t.id, 'PERSETUJUAN_PIMPINAN')}
+    />
+  );
 };
 
 export const BlokirPenugasanTab = ({ onPrint }: { onPrint?: (t: AjuanSuratTugas) => void }) => {

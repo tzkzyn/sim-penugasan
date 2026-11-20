@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, ChevronDown, FileText, LogOut, Menu, UserCircle2 } from 'lucide-react';
-import { usePenugasan } from '@/context/PenugasanContext';
+import { Bell, ChevronDown, LogOut, Menu, UserCircle2 } from 'lucide-react';
 import type { Pegawai } from '@/types';
 
 interface AdminTopNavbarProps {
@@ -21,28 +20,12 @@ export const AdminTopNavbar = ({
   onOpenMobileMenu,
   onLogout,
 }: AdminTopNavbarProps) => {
-  const { tasks } = usePenugasan();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [hasUnreadNotif, setHasUnreadNotif] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-
-  const normalizedRole = user?.role?.toUpperCase() || 'ADMIN';
-  const isApproval = normalizedRole === 'APPROVAL';
-
-  const pendingCount = useMemo(
-    () =>
-      tasks.filter((item) =>
-        isApproval
-          ? item.status === 'PERSETUJUAN_PIMPINAN'
-          : item.status === 'DRAFT' ||
-            item.status === 'VERIFIKASI_SUBBAGIAN' ||
-            item.status === 'PERSETUJUAN_PIMPINAN',
-      ).length,
-    [tasks, isApproval],
-  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -93,22 +76,8 @@ export const AdminTopNavbar = ({
           </div>
         </div>
 
-        {/* Kanan: Ajuan Pending + Notifikasi + Profil */}
+        {/* Kanan: Notifikasi + Profil */}
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-          <Link
-            to={isApproval ? `${prefix}/approval-tugas` : `${prefix}/ajuan-pegawai`}
-            title="Ajuan Menunggu"
-            aria-label="Ajuan Menunggu"
-            className="relative p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-full transition-colors"
-          >
-            <FileText className="w-[18px] h-[18px]" />
-            {pendingCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
-                {pendingCount}
-              </span>
-            )}
-          </Link>
-
           <div ref={notifRef} className="relative">
             <button
               type="button"

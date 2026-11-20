@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type {
   AjuanSuratTugas,
   KategoriTemplateSurat,
@@ -9,7 +10,7 @@ import {
   getPegawaiDinasStats,
 } from '@/utils/penugasanHelpers';
 import { A4WordEditorCanvas } from '@/components/ui/CetakSuratTugasModal';
-import { ChevronDown, FileEdit, FileText } from 'lucide-react';
+import { ChevronDown, FileEdit, FileText, Search } from 'lucide-react';
 
 interface AdminPegawaiPickerDropdownProps {
   pegawaiList: Pegawai[];
@@ -27,6 +28,24 @@ interface AdminPegawaiPickerDropdownProps {
   onTogglePegawai: (id: string) => void;
 }
 
+const formatShortRangeDate = (isoDate: string): string => {
+  if (!isoDate) return '-';
+  try {
+    return new Date(isoDate).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+    });
+  } catch {
+    return isoDate.slice(0, 10);
+  }
+};
+
+const isSamePegawaiOption = (a: Pegawai, b: Pegawai): boolean => {
+  if (a.id && b.id && a.id === b.id) return true;
+  if (a.nip && b.nip && a.nip.trim() === b.nip.trim()) return true;
+  return a.nama.trim().toLowerCase() === b.nama.trim().toLowerCase();
+};
+
 export function AdminPegawaiPickerDropdown({
   pegawaiList,
   selectedIds,
@@ -42,6 +61,17 @@ export function AdminPegawaiPickerDropdown({
   onReset,
   onTogglePegawai,
 }: AdminPegawaiPickerDropdownProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const q = searchTerm.trim().toLowerCase();
+  const visiblePegawai = q
+    ? pegawaiList.filter(
+        (p) =>
+          p.nama.toLowerCase().includes(q) ||
+          (p.nip || '').toLowerCase().includes(q) ||
+          (p.unitKerja || '').toLowerCase().includes(q),
+      )
+    : pegawaiList;
+
   return (
     <div className="relative">
       <label className="block text-xs font-bold text-slate-700 mb-1">Pegawai Ditugaskan</label>
@@ -64,9 +94,11 @@ export function AdminPegawaiPickerDropdown({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={onClose} />
-          <div className="absolute right-0 left-0 sm:left-auto sm:min-w-[340px] z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+          <div className="absolute right-0 left-0 sm:left-auto sm:min-w-[360px] z-50 mt-1.5 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-2 text-xs">
-              <span className="font-bold text-slate-700">Pilih Pegawai ({selectedIds.length})</span>
+              <span className="font-bold text-slate-700">
+                Pilih Pegawai ({selectedIds.length} / {pegawaiList.length})
+              </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -86,8 +118,18 @@ export function AdminPegawaiPickerDropdown({
                 )}
               </div>
             </div>
-            <div className="space-y-1 pt-2">
-              {pegawaiList.map((p) => {
+            <div className="relative mt-2 mb-1">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Cari nama, NIP, atau unit..."
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 focus:bg-white"
+              />
+            </div>
+            <div className="max-h-64 overflow-y-auto space-y-1 pt-1">
+              {visiblePegawai.map((p) => {
                 const isSelected = selectedIds.includes(p.id);
                 const pStats = getPegawaiDinasStats(
                   p,
@@ -105,6 +147,18 @@ export function AdminPegawaiPickerDropdown({
                   allTasks,
                 );
                 const hasConflict = pConflicts.length > 0;
+                const todayIso = new Date().toISOString().slice(0, 10);
+                const scheduledTasks = allTasks
+                  .filter(
+                    (t) =>
+                      t.status !== 'DITOLAK' &&
+                      (t.tanggalSelesai || t.tanggalMulai).slice(0, 10) >= todayIso &&
+                      (t.pegawaiDitugaskan || []).some((assigned) =>
+                        isSamePegawaiOption(assigned, p),
+                      ),
+                  )
+                  .sort((a, b) => a.tanggalMulai.localeCompare(b.tanggalMulai));
+                const nextScheduled = scheduledTasks[0];
                 return (
                   <label
                     key={p.id}
@@ -128,11 +182,19 @@ export function AdminPegawaiPickerDropdown({
                         <p className="text-[10px] text-slate-500">
                           Dinas: {pStats.totalDinas}x (Mgg: {pStats.dinasMingguIni}x &bull; Bln: {pStats.dinasBulanIni}x)
                         </p>
-                        {hasConflict && (
+                        {hasConflict ? (
                           <p className="text-[10px] font-bold text-rose-700">
                             Bentrok dgn {pConflicts[0].conflictingTask.nomorSurat}
                           </p>
-                        )}
+                        ) : nextScheduled ? (
+                          <p className="text-[10px] font-semibold text-amber-700">
+                            Terjadwal {scheduledTasks.length} tugas (terdekat: {formatShortRangeDate(nextScheduled.tanggalMulai)}
+                            {nextScheduled.tanggalSelesai && nextScheduled.tanggalSelesai !== nextScheduled.tanggalMulai
+                              ? `–${formatShortRangeDate(nextScheduled.tanggalSelesai)}`
+                              : ''}
+                            )
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
@@ -141,6 +203,11 @@ export function AdminPegawaiPickerDropdown({
                   </label>
                 );
               })}
+              {visiblePegawai.length === 0 && (
+                <p className="py-4 text-center text-xs text-slate-400">
+                  Tidak ada pegawai yang cocok dengan pencarian.
+                </p>
+              )}
             </div>
           </div>
         </>
@@ -163,6 +230,10 @@ interface AdminBuatTugasPreviewColumnProps {
   previewLokasi: string;
   lokasiSpesifik: string;
   deskripsi: string;
+  dasarSuratDari?: string;
+  dasarSuratNomor?: string;
+  dasarSuratTanggal?: string;
+  sumberBiaya?: 'PENYELENGGARA' | 'DIPA' | 'LAINNYA';
   currentAdmin: Pegawai;
   previewAssignedPegawai: Pegawai[];
   fallbackPegawai?: Pegawai;
@@ -187,6 +258,10 @@ export function AdminBuatTugasPreviewColumn({
   previewLokasi,
   lokasiSpesifik,
   deskripsi,
+  dasarSuratDari,
+  dasarSuratNomor,
+  dasarSuratTanggal,
+  sumberBiaya,
   currentAdmin,
   previewAssignedPegawai,
   fallbackPegawai,
@@ -213,6 +288,10 @@ export function AdminBuatTugasPreviewColumn({
             lokasiPenugasan: previewLokasi,
             lokasiSpesifik,
             deskripsi,
+            dasarSuratDari: dasarSuratDari || undefined,
+            dasarSuratNomor: dasarSuratNomor || undefined,
+            dasarSuratTanggal: dasarSuratTanggal || undefined,
+            sumberBiaya: sumberBiaya || 'PENYELENGGARA',
             pengaju: currentAdmin,
             pegawaiDitugaskan:
               previewAssignedPegawai.length > 0

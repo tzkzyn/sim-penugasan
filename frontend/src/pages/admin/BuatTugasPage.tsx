@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePenugasan } from '@/context/PenugasanContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,13 +16,15 @@ import {
   validateDocumentFile,
 } from '@/utils/penugasanHelpers';
 import { sendEmailNotification } from '@/utils/emailService';
-import { FileText, Send, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { FileText, Send, ArrowLeft, AlertTriangle, RotateCcw } from 'lucide-react';
 import {
   AdminBuatTugasPreviewColumn,
   AdminPegawaiPickerDropdown,
 } from '@/components/admin/AdminBuatTugasSections';
 
 type Wilayah = { id: string; name: string };
+
+const AUTOSAVE_DRAFT_KEY = 'sim_buat_tugas_autosave_draft';
 
 export const BuatTugasPage = () => {
   const navigate = useNavigate();
@@ -34,8 +36,21 @@ export const BuatTugasPage = () => {
   const [isWilayahLoading, setIsWilayahLoading] = useState(false);
   const [isPegawaiDropdownOpen, setIsPegawaiDropdownOpen] = useState(false);
   const [formError, setFormError] = useState('');
+  const submitTargetStatusRef = useRef<'DRAFT' | 'PERSETUJUAN_PIMPINAN'>('PERSETUJUAN_PIMPINAN');
+  const [restoredDraft, setRestoredDraft] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { perihal?: string; deskripsi?: string; dokumenDraftText?: string };
+        return Boolean(parsed && (parsed.perihal || parsed.deskripsi || parsed.dokumenDraftText));
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  });
 
-  const [formData, setFormData] = useState(() => ({
+  const buildInitialFormData = () => ({
     nomorSurat: `DRAFT-ST/RBI/2026/${String(allTasks.length + 1).padStart(3, '0')}`,
     perihal: '',
     unitKerja: 'RBI' as UnitKerjaType,
@@ -52,13 +67,57 @@ export const BuatTugasPage = () => {
     koordinatLat: -6.9147,
     koordinatLng: 107.6098,
     deskripsi: '',
+    dasarSuratDari: '',
+    dasarSuratNomor: '',
+    dasarSuratTanggal: '',
+    sumberBiaya: 'PENYELENGGARA' as 'PENYELENGGARA' | 'DIPA' | 'LAINNYA',
     file: null as File | null,
     docMode: 'editor' as 'editor' | 'upload',
     dokumenDraftText: '',
     ttdUserPng: '',
     ttdUserSignerName: '',
     ttdUserSignedAt: '',
-  }));
+  });
+
+  const [formData, setFormData] = useState(() => {
+    const base = buildInitialFormData();
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<typeof base>;
+        if (parsed && (parsed.perihal || parsed.deskripsi || parsed.dokumenDraftText)) {
+          return { ...base, ...parsed, file: null };
+        }
+      }
+    } catch {
+      // ignore invalid autosave
+    }
+    return base;
+  });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const { file: _ignoredFile, ...serializable } = formData;
+        void _ignoredFile;
+        localStorage.setItem(AUTOSAVE_DRAFT_KEY, JSON.stringify(serializable));
+      } catch {
+        // ignore storage quota errors
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [formData]);
+
+  const handleResetDraft = () => {
+    try {
+      localStorage.removeItem(AUTOSAVE_DRAFT_KEY);
+    } catch {
+      // ignore
+    }
+    setFormData(buildInitialFormData());
+    setRestoredDraft(false);
+    setFormError('');
+  };
 
   const toggleFormPegawai = (id: string) => {
     setFormData((prev) => {
@@ -194,26 +253,69 @@ export const BuatTugasPage = () => {
       lokasiSpesifik: formData.lokasiSpesifik,
       koordinat: [formData.koordinatLat, formData.koordinatLng],
       deskripsi: formData.deskripsi,
+      dasarSuratDari: formData.dasarSuratDari.trim() || undefined,
+      dasarSuratNomor: formData.dasarSuratNomor.trim() || undefined,
+      dasarSuratTanggal: formData.dasarSuratTanggal || undefined,
+      sumberBiaya: formData.sumberBiaya,
       filePerbaikanUrl: uploadedFileUrl,
       filePerbaikanNama: uploadedFileName,
       dokumenDraftText: formData.docMode === 'editor' && formData.dokumenDraftText ? formData.dokumenDraftText : undefined,
       ttdUserPng: formData.ttdUserPng || undefined,
       ttdUserSignerName: formData.ttdUserSignerName || undefined,
       ttdUserSignedAt: formData.ttdUserSignedAt || undefined,
-      status: 'DRAFT',
-      workflow: [
-        {
-          stage: 'DRAFT',
-          label: 'Pengajuan Draft ST',
-          actor: currentAdmin.nama,
-          tanggal: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          status: 'COMPLETED',
-          catatan: 'Draft baru telah diajukan dari Admin.',
-        }
-      ],
+      status: submitTargetStatusRef.current,
+      workflow:
+        submitTargetStatusRef.current === 'PERSETUJUAN_PIMPINAN'
+          ? [
+              {
+                stage: 'DRAFT',
+                label: 'Pengajuan Draft ST',
+                actor: currentAdmin.nama,
+                tanggal: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                status: 'COMPLETED',
+                catatan: 'Surat tugas dibuat dan langsung diajukan ke Pimpinan.',
+              },
+              {
+                stage: 'PERSETUJUAN_PIMPINAN',
+                label: 'Persetujuan Pimpinan',
+                actor: 'Pimpinan',
+                status: 'IN_PROGRESS',
+                catatan: 'Menunggu persetujuan pimpinan.',
+              },
+              {
+                stage: 'SURAT_TERBIT',
+                label: 'Penerbitan Surat Resmi',
+                actor: 'Tata Usaha',
+                status: 'PENDING',
+              },
+            ]
+          : [
+              {
+                stage: 'DRAFT',
+                label: 'Pengajuan Draft ST',
+                actor: currentAdmin.nama,
+                tanggal: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                status: 'COMPLETED',
+                catatan: 'Disimpan sebagai konsep (Draft) oleh Admin.',
+              },
+            ],
     };
 
-    await createTask(newAjuan);
+    try {
+      await createTask(newAjuan);
+      try {
+        localStorage.removeItem(AUTOSAVE_DRAFT_KEY);
+      } catch {
+        // ignore
+      }
+    } catch (err) {
+      setFormError(
+        err instanceof Error
+          ? `${err.message} Isian Anda tetap tersimpan—silakan klik Ajukan lagi.`
+          : 'Gagal menyimpan pengajuan. Isian Anda tetap tersimpan—silakan coba lagi.',
+      );
+      return;
+    }
     
     // Kirim notifikasi email ke semua pegawai yang ditugaskan
     try {
@@ -256,6 +358,19 @@ export const BuatTugasPage = () => {
         {/* KOLOM KIRI: FORM INPUT */}
         <div className="no-print lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm print:hidden">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {restoredDraft && (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-blue-200 bg-[#ECF2FF]/70 px-3.5 py-2 text-xs text-slate-700">
+                <span>Draft terakhir dipulihkan otomatis.</span>
+                <button
+                  type="button"
+                  onClick={handleResetDraft}
+                  className="inline-flex items-center gap-1 font-semibold text-[#5D87FF] hover:underline cursor-pointer shrink-0"
+                >
+                  <RotateCcw className="w-3 h-3" /> Reset Draft
+                </button>
+              </div>
+            )}
+
             {formError && (
               <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-800">
                 <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
@@ -370,7 +485,7 @@ export const BuatTugasPage = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Tgl Mulai</label>
                 <input
@@ -449,6 +564,58 @@ export const BuatTugasPage = () => {
               <input type="text" required placeholder="Contoh: Kantor, lembaga, atau sekolah tujuan" value={formData.lokasiSpesifik} onChange={(e) => setFormData({ ...formData, lokasiSpesifik: e.target.value })} className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors" />
             </div>
 
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 space-y-2.5">
+              <p className="text-xs font-bold text-slate-700">Dasar Surat &amp; Pembiayaan (Sesuai Template)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Dasar Surat Dari</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Kepala BBPPMPV BMTI"
+                    value={formData.dasarSuratDari}
+                    onChange={(e) => setFormData({ ...formData, dasarSuratDari: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nomor Dasar Surat</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: 1234/B7.2/KP/2026"
+                    value={formData.dasarSuratNomor}
+                    onChange={(e) => setFormData({ ...formData, dasarSuratNomor: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Tanggal Dasar Surat</label>
+                  <input
+                    type="date"
+                    value={formData.dasarSuratTanggal}
+                    onChange={(e) => setFormData({ ...formData, dasarSuratTanggal: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Sumber Biaya</label>
+                  <select
+                    value={formData.sumberBiaya}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        sumberBiaya: e.target.value as 'PENYELENGGARA' | 'DIPA' | 'LAINNYA',
+                      })
+                    }
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  >
+                    <option value="PENYELENGGARA">Penyelenggara</option>
+                    <option value="DIPA">DIPA BBPPMPV BMTI</option>
+                    <option value="LAINNYA">Lainnya</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi Tugas</label>
               <textarea
@@ -524,7 +691,7 @@ export const BuatTugasPage = () => {
               )}
             </div>
 
-            <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+            <div className="pt-3 flex flex-wrap items-center justify-end gap-2.5 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => navigate('/admin/tugas')}
@@ -535,6 +702,20 @@ export const BuatTugasPage = () => {
               <button
                 type="submit"
                 disabled={formScheduleConflicts.length > 0}
+                onClick={() => {
+                  submitTargetStatusRef.current = 'DRAFT';
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Simpan Draft</span>
+              </button>
+              <button
+                type="submit"
+                disabled={formScheduleConflicts.length > 0}
+                onClick={() => {
+                  submitTargetStatusRef.current = 'PERSETUJUAN_PIMPINAN';
+                }}
                 className={`flex items-center gap-2 px-5 py-2 text-xs font-bold rounded-xl shadow-md transition-all ${
                   formScheduleConflicts.length > 0
                     ? 'bg-rose-200 text-rose-700 cursor-not-allowed shadow-none'
@@ -545,7 +726,7 @@ export const BuatTugasPage = () => {
                 <span>
                   {formScheduleConflicts.length > 0
                     ? 'Ditolak (Ganti Orang Bentrok)'
-                    : 'Simpan Tugas'}
+                    : 'Kirim ke Pimpinan'}
                 </span>
               </button>
             </div>
@@ -567,6 +748,10 @@ export const BuatTugasPage = () => {
           previewLokasi={previewLokasi}
           lokasiSpesifik={formData.lokasiSpesifik}
           deskripsi={formData.deskripsi}
+          dasarSuratDari={formData.dasarSuratDari}
+          dasarSuratNomor={formData.dasarSuratNomor}
+          dasarSuratTanggal={formData.dasarSuratTanggal}
+          sumberBiaya={formData.sumberBiaya}
           currentAdmin={currentAdmin}
           previewAssignedPegawai={previewAssignedPegawai}
           fallbackPegawai={pegawaiList[0]}

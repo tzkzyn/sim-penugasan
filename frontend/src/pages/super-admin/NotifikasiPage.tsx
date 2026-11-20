@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell, CheckCheck, Clock, FileText, CalendarCheck, ShieldCheck, Trash2, Filter, UserCog } from 'lucide-react';
+import { apiService } from '@/api/apiService';
 
 interface NotificationItem {
   id: string;
@@ -20,6 +21,20 @@ export const NotifikasiPage = () => {
     }
   });
 
+  useEffect(() => {
+    let active = true;
+    const fetchNotif = async () => {
+      const res = await apiService.getNotifikasi('SUPER_ADMIN');
+      if (active && res.success && Array.isArray(res.data)) {
+        setNotifications(res.data as NotificationItem[]);
+      }
+    };
+    void fetchNotif();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'TUGAS' | 'ABSENSI' | 'AKUN' | 'SISTEM'>('ALL');
 
   const saveNotifications = (newList: NotificationItem[]) => {
@@ -32,22 +47,27 @@ export const NotifikasiPage = () => {
   };
 
   const markAllRead = () => {
+    void apiService.markAllNotifikasiRead('SUPER_ADMIN');
     const updated = notifications.map((n) => ({ ...n, unread: false }));
     saveNotifications(updated);
   };
 
   const toggleRead = (id: string) => {
+    const target = notifications.find((n) => n.id === id);
+    if (target) void apiService.updateNotifikasi(id, !target.unread);
     const updated = notifications.map((n) => (n.id === id ? { ...n, unread: !n.unread } : n));
     saveNotifications(updated);
   };
 
   const deleteNotification = (id: string) => {
+    void apiService.deleteNotifikasi(id);
     const updated = notifications.filter((n) => n.id !== id);
     saveNotifications(updated);
   };
 
   const clearAll = () => {
     if (confirm('Hapus semua riwayat notifikasi Super Admin?')) {
+      void apiService.clearNotifikasi('SUPER_ADMIN');
       saveNotifications([]);
     }
   };

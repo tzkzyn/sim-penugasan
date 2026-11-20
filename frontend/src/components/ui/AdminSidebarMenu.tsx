@@ -16,6 +16,7 @@ import {
   History,
   Archive,
   LayoutTemplate,
+  Clock,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -61,9 +62,9 @@ const getSidebarMenuByRole = (role: string, prefix: string): SidebarMenuItemConf
   if (normalized === 'APPROVAL') {
     return [
       { to: `${prefix}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
-      { to: `${prefix}/approval-tugas`, label: 'Approval Tugas', icon: CheckSquare },
+      { to: `${prefix}/approval-tugas`, label: 'Approval Tugas', icon: CheckSquare, sectionTitle: 'Persetujuan' },
       { to: `${prefix}/approval-cuti`, label: 'Approval Izin & Cuti', icon: CalendarCheck },
-      { to: `${prefix}/surat-tugas`, label: 'Surat Tugas', icon: FileText },
+      { to: `${prefix}/surat-tugas`, label: 'Surat Tugas', icon: FileText, sectionTitle: 'Dokumen & Riwayat' },
       { to: `${prefix}/arsip`, label: 'Arsip Surat & Laporan', icon: Archive },
       { to: `${prefix}/riwayat-approval`, label: 'Riwayat Approval', icon: History },
     ];
@@ -72,6 +73,7 @@ const getSidebarMenuByRole = (role: string, prefix: string): SidebarMenuItemConf
   return [
     { to: `${prefix}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
     { to: `${prefix}/tugas/buat`, label: 'Buat Surat Tugas', icon: FileText, sectionTitle: 'Penugasan' },
+    { to: `${prefix}/tugas?tab=draft`, label: 'Draft Surat', icon: Clock },
     { to: `${prefix}/template-surat`, label: 'Template Surat', icon: LayoutTemplate },
     { to: `${prefix}/arsip`, label: 'Arsip Surat & Laporan', icon: Archive },
     { to: `${prefix}/anggota`, label: 'Data Pegawai', icon: Users, sectionTitle: 'Pegawai & Kehadiran' },

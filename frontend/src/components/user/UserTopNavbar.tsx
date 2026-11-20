@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Bell, ChevronDown, FileText, LogOut, Menu, UserCircle2 } from 'lucide-react';
-import { usePenugasan } from '@/context/PenugasanContext';
+import { Bell, ChevronDown, LogOut, Menu, UserCircle2 } from 'lucide-react';
 import type { Pegawai } from '@/types';
 
 interface UserTopNavbarProps {
@@ -11,21 +10,8 @@ interface UserTopNavbarProps {
 }
 
 export const UserTopNavbar = ({ user, onOpenMobileMenu, onLogout }: UserTopNavbarProps) => {
-  const { myTasks } = usePenugasan();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-
-  const belumLaporanCount = useMemo(
-    () =>
-      myTasks.filter(
-        (item) =>
-          item.status === 'SURAT_TERBIT' &&
-          !item.fileLaporanUrl &&
-          !item.fileLaporanNama &&
-          !item.tanggalLaporan,
-      ).length,
-    [myTasks],
-  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -61,26 +47,8 @@ export const UserTopNavbar = ({ user, onOpenMobileMenu, onLogout }: UserTopNavba
           </div>
         </div>
 
-        {/* Kanan: Pengingat Laporan + Notifikasi + Profil */}
+        {/* Kanan: Notifikasi + Profil */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link
-            to="/user/upload-surat"
-            aria-label="Laporan Belum Diunggah"
-            title={
-              belumLaporanCount > 0
-                ? `${belumLaporanCount} surat tugas belum dilaporkan`
-                : 'Upload Laporan Tugas'
-            }
-            className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
-          >
-            <FileText className="h-[18px] w-[18px]" />
-            {belumLaporanCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
-                {belumLaporanCount}
-              </span>
-            )}
-          </Link>
-
           <NavLink
             to="/user/notifikasi"
             aria-label="Notifikasi"

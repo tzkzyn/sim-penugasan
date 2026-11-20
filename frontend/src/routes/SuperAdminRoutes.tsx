@@ -14,7 +14,6 @@ const AkunPage = lazy(() => import('@/pages/super-admin/AkunPage').then(m => ({ 
 const PokjaPage = lazy(() => import('@/pages/super-admin/PokjaPage').then(m => ({ default: m.PokjaPage })));
 
 // Administrator pages
-const AjuanPegawaiPage = lazy(() => import('@/pages/super-admin/AjuanPegawaiPage').then(m => ({ default: m.AjuanPegawaiPage })));
 const RekapPenugasanPage = lazy(() => import('@/pages/shared/RekapPenugasanPage').then(m => ({ default: m.RekapPenugasanPage })));
 
 // Anggota management sub-pages
@@ -86,7 +85,6 @@ export const SuperAdminRoutes = () => {
         <Route path="pokja" element={<PokjaPage />} />
 
         {/* Administrator */}
-        <Route path="ajuan-pegawai" element={<AjuanPegawaiPage />} />
         <Route path="rekap-penugasan" element={<RekapPenugasanPage />} />
 
         {/* Other */}

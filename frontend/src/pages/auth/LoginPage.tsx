@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { SESSION_EXPIRED_NOTICE_KEY } from '@/context/AuthContext';
 import { Captcha } from '@/components/ui/captcha';
 import {
   ShieldCheck,
@@ -24,21 +25,121 @@ export const LoginPage: React.FC = () => {
   const [generatedCaptcha, setGeneratedCaptcha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(() => {
+    try {
+      const notice = localStorage.getItem(SESSION_EXPIRED_NOTICE_KEY);
+      if (notice) {
+        localStorage.removeItem(SESSION_EXPIRED_NOTICE_KEY);
+        return notice;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const LOGIN_LOCK_KEY = 'sim_login_lock_state';
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const LOCK_DURATION_MS = 30_000;
+
+  const [failedAttempts, setFailedAttempts] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem(LOGIN_LOCK_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { attempts?: number };
+        return typeof parsed.attempts === 'number' ? parsed.attempts : 0;
+      }
+    } catch {
+      // ignore
+    }
+    return 0;
+  });
+
+  const [lockUntil, setLockUntil] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem(LOGIN_LOCK_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { lockUntil?: number };
+        if (typeof parsed.lockUntil === 'number' && parsed.lockUntil > Date.now()) {
+          return parsed.lockUntil;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return 0;
+  });
+
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(() =>
+    lockUntil > Date.now() ? Math.ceil((lockUntil - Date.now()) / 1000) : 0
+  );
+
+  useEffect(() => {
+    if (!lockUntil) return;
+    const timer = window.setInterval(() => {
+      const remaining = Math.ceil((lockUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setCooldownSeconds(0);
+        setLockUntil(0);
+        setFailedAttempts(0);
+        try {
+          localStorage.removeItem(LOGIN_LOCK_KEY);
+        } catch {
+          // ignore
+        }
+      } else {
+        setCooldownSeconds(remaining);
+      }
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [lockUntil]);
+
   // If already authenticated, allow instant navigation
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated && !successMsg) {
       // do not auto redirect immediately if user just reached page to re-login, but can navigate
     }
   }, [isAuthenticated, successMsg]);
 
+  const recordFailedAttempt = () => {
+    const nextAttempts = failedAttempts + 1;
+    setFailedAttempts(nextAttempts);
+    if (nextAttempts >= MAX_LOGIN_ATTEMPTS) {
+      const nextLockUntil = Date.now() + LOCK_DURATION_MS;
+      setLockUntil(nextLockUntil);
+      setCooldownSeconds(Math.ceil(LOCK_DURATION_MS / 1000));
+      try {
+        localStorage.setItem(
+          LOGIN_LOCK_KEY,
+          JSON.stringify({ attempts: nextAttempts, lockUntil: nextLockUntil })
+        );
+      } catch {
+        // ignore
+      }
+      return true;
+    }
+    try {
+      localStorage.setItem(
+        LOGIN_LOCK_KEY,
+        JSON.stringify({ attempts: nextAttempts, lockUntil: 0 })
+      );
+    } catch {
+      // ignore
+    }
+    return false;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
+
+    if (cooldownSeconds > 0) {
+      setErrorMsg(`Terlalu banyak percobaan gagal. Silakan tunggu ${cooldownSeconds} detik.`);
+      return;
+    }
 
     // 1. Validasi Input dasar
     if (!username.trim()) {
@@ -56,7 +157,12 @@ export const LoginPage: React.FC = () => {
 
     // 2. Validasi CAPTCHA (case insensitive)
     if (userCaptcha.trim().toLowerCase() !== generatedCaptcha.toLowerCase()) {
-      setErrorMsg('Kode CAPTCHA tidak cocok! Silakan coba lagi.');
+      const locked = recordFailedAttempt();
+      setErrorMsg(
+        locked
+          ? 'Terlalu banyak percobaan gagal. Login dikunci sementara selama 30 detik.'
+          : 'Kode CAPTCHA tidak cocok! Silakan coba lagi.'
+      );
       return;
     }
 
@@ -67,12 +173,24 @@ export const LoginPage: React.FC = () => {
       setIsLoading(false);
 
       if (res.success) {
+        setFailedAttempts(0);
+        setLockUntil(0);
+        try {
+          localStorage.removeItem(LOGIN_LOCK_KEY);
+        } catch {
+          // ignore
+        }
         setSuccessMsg('Otentikasi Berhasil! Mengalihkan ke Dashboard...');
         setTimeout(() => {
           navigate('/');
         }, 1000);
       } else {
-        setErrorMsg(res.message || 'Gagal login. Periksa kembali kredensial Anda.');
+        const locked = recordFailedAttempt();
+        setErrorMsg(
+          locked
+            ? 'Terlalu banyak percobaan gagal (5x). Login dikunci sementara 30 detik. Jika lupa password, klik "Lupa password?".'
+            : res.message || 'Gagal login. Periksa kembali kredensial Anda.'
+        );
       }
     }, 600);
   };
@@ -238,13 +356,18 @@ export const LoginPage: React.FC = () => {
             {/* Tombol Submit */}
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#172E6E] hover:to-[#1D4ED8] text-white font-bold text-sm rounded-full shadow-lg shadow-blue-600/25 hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              disabled={isLoading || cooldownSeconds > 0}
+              className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#172E6E] hover:to-[#1D4ED8] text-white font-bold text-sm rounded-full shadow-lg shadow-blue-600/25 hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Memverifikasi...</span>
+                </>
+              ) : cooldownSeconds > 0 ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Tunggu {cooldownSeconds} detik</span>
                 </>
               ) : (
                 <>

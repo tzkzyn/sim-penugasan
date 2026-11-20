@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell, CheckCheck, Clock, FileText, CalendarCheck, Trash2 } from 'lucide-react';
+import { apiService } from '@/api/apiService';
 
 interface NotificationItem {
-  id: number;
+  id: string;
   title: string;
   desc: string;
   time: string;
@@ -20,11 +21,27 @@ export const NotifikasiPage = () => {
     }
   });
 
+  useEffect(() => {
+    let active = true;
+    const fetchNotif = async () => {
+      const res = await apiService.getNotifikasi('USER');
+      if (active && res.success && Array.isArray(res.data)) {
+        setNotifications(res.data);
+      }
+    };
+    void fetchNotif();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const markAllRead = () => {
+    void apiService.markAllNotifikasiRead('USER');
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
   };
 
-  const deleteNotification = (id: number) => {
+  const deleteNotification = (id: string) => {
+    void apiService.deleteNotifikasi(id);
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 

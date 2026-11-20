@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { apiService } from '@/api/apiService';
 import { formatDate } from '@/utils/formatter';
 import { useAuth } from '@/hooks/useAuth';
 import { usePenugasan } from '@/context/PenugasanContext';
@@ -30,6 +31,7 @@ import {
   Users,
 } from 'lucide-react';
 import { DashboardAjuanDetailModal } from '@/components/ui/DashboardAjuanDetailModal';
+import { DashboardDataStatusBar } from '@/components/ui/DashboardDataStatusBar';
 
 export const DashboardPage = () => {
   const { user } = useAuth();
@@ -60,7 +62,12 @@ export const DashboardPage = () => {
     const proses = tasks.filter(
       (t) => t.status === 'VERIFIKASI_SUBBAGIAN' || t.status === 'PERSETUJUAN_PIMPINAN'
     ).length;
-    return { total, terbit, proses };
+    const belumLaporan = tasks.filter(
+      (t) =>
+        t.status === 'SURAT_TERBIT' &&
+        !(t.fileLaporanUrl || t.fileLaporanNama || t.tanggalLaporan)
+    ).length;
+    return { total, terbit, proses, belumLaporan };
   }, [tasks]);
 
   const currentYear = new Date().getFullYear();
@@ -84,31 +91,48 @@ export const DashboardPage = () => {
     });
   }, [tasks, currentYear]);
 
-  const cutiStats = useMemo(() => {
-    let terpakai = 0;
+  const [cutiList, setCutiList] = useState<Array<{ status?: string; mulai?: string; selesai?: string }>>(() => {
     try {
       const saved = localStorage.getItem('sim_pengajuan_cuti');
       if (saved) {
-        const list = JSON.parse(saved);
-        if (Array.isArray(list)) {
-          list.forEach((item: { status?: string; mulai?: string; selesai?: string }) => {
-            if (item.status === 'DISETUJUI' && item.mulai && item.selesai) {
-              const d1 = new Date(item.mulai).getTime();
-              const d2 = new Date(item.selesai).getTime();
-              const days = Math.max(Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1, 1);
-              terpakai += days;
-            }
-          });
-        }
+        const parsed: unknown = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : [];
       }
     } catch {
       // ignore
     }
+    return [];
+  });
+
+  useEffect(() => {
+    let active = true;
+    const loadCuti = async () => {
+      const res = await apiService.getCuti();
+      if (active && res.success && Array.isArray(res.data)) {
+        setCutiList(res.data);
+      }
+    };
+    void loadCuti();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const cutiStats = useMemo(() => {
+    let terpakai = 0;
+    cutiList.forEach((item) => {
+      if (item.status === 'DISETUJUI' && item.mulai && item.selesai) {
+        const d1 = new Date(item.mulai).getTime();
+        const d2 = new Date(item.selesai).getTime();
+        const days = Math.max(Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1, 1);
+        terpakai += days;
+      }
+    });
     const kuota = 12;
     const sisa = Math.max(kuota - terpakai, 0);
     const persenTersisa = Math.round((sisa / kuota) * 100);
     return { kuota, terpakai, sisa, persenTersisa };
-  }, []);
+  }, [cutiList]);
 
 
   const formatLokasiDisplay = (lokasi: string) => {
@@ -148,10 +172,13 @@ export const DashboardPage = () => {
         </div>
       </div>
 
+      <DashboardDataStatusBar />
+
       {/* Ringkasan Status Penugasan */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <Link
           to={`${basePrefix}/arsip`}
+          title="Total seluruh surat tugas yang tercatat di sistem"
           className="flex items-center gap-3.5 rounded-2xl border border-slate-200/70 bg-white px-5 py-4 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-[#5D87FF]/40 transition"
         >
           <div className="w-10 h-10 rounded-xl bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
@@ -186,6 +213,19 @@ export const DashboardPage = () => {
           <div>
             <p className="text-xs font-medium text-slate-500">Dalam Proses</p>
             <p className="text-xl font-bold text-slate-900">{summaryStats.proses}</p>
+          </div>
+        </Link>
+
+        <Link
+          to={`${basePrefix}/arsip?tab=belum-laporan`}
+          className="flex items-center gap-3.5 rounded-2xl border border-slate-200/70 bg-white px-5 py-4 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.05)] hover:border-rose-300 transition"
+        >
+          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Laporan Belum Selesai</p>
+            <p className="text-xl font-bold text-slate-900">{summaryStats.belumLaporan}</p>
           </div>
         </Link>
 

@@ -15,6 +15,9 @@ export interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_STORAGE_KEY = 'sim_penugasan_user';
+const SESSION_EXPIRES_AT_KEY = 'sim_penugasan_session_expires_at';
+export const SESSION_EXPIRED_NOTICE_KEY = 'sim_session_expired_notice';
+const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 jam
 const CREDENTIALS_STORAGE_KEY = 'sim_penugasan_credentials';
 const ROLE_CREDENTIALS_STORAGE_KEY = 'sim_penugasan_role_credentials';
 const AKUNS_STORAGE_KEY = 'sim_penugasan_akuns';
@@ -294,8 +297,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const stored = localStorage.getItem(AUTH_STORAGE_KEY);
       if (stored) {
+        const expiresRaw = localStorage.getItem(SESSION_EXPIRES_AT_KEY);
+        const expiresAt = expiresRaw ? Number(expiresRaw) : 0;
+        if (expiresRaw && (!Number.isFinite(expiresAt) || Date.now() > expiresAt)) {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+          localStorage.removeItem(SESSION_EXPIRES_AT_KEY);
+          localStorage.setItem(
+            SESSION_EXPIRED_NOTICE_KEY,
+            'Sesi Anda telah berakhir karena batas waktu login. Silakan masuk kembali.'
+          );
+          return null;
+        }
         const parsed: unknown = JSON.parse(stored);
-        return normalizeStoredUser(parsed);
+        const normalized = normalizeStoredUser(parsed);
+        if (normalized && !expiresRaw) {
+          localStorage.setItem(SESSION_EXPIRES_AT_KEY, String(Date.now() + SESSION_DURATION_MS));
+        }
+        return normalized;
       }
     } catch {
       // fallback
@@ -348,6 +366,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       delete safePegawai.password;
       setUser(safePegawai);
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(safePegawai));
+      localStorage.setItem(SESSION_EXPIRES_AT_KEY, String(Date.now() + SESSION_DURATION_MS));
+      localStorage.removeItem(SESSION_EXPIRED_NOTICE_KEY);
       return { success: true };
     };
 
@@ -539,7 +559,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem(SESSION_EXPIRES_AT_KEY);
   };
+
+  useEffect(() => {
+    if (!user) return;
+    const checkExpiry = () => {
+      try {
+        const expiresRaw = localStorage.getItem(SESSION_EXPIRES_AT_KEY);
+        const expiresAt = expiresRaw ? Number(expiresRaw) : 0;
+        if (expiresRaw && (!Number.isFinite(expiresAt) || Date.now() > expiresAt)) {
+          localStorage.setItem(
+            SESSION_EXPIRED_NOTICE_KEY,
+            'Sesi Anda telah berakhir. Silakan masuk kembali untuk melanjutkan.'
+          );
+          setUser(null);
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+          localStorage.removeItem(SESSION_EXPIRES_AT_KEY);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    const timer = window.setInterval(checkExpiry, 60_000);
+    return () => window.clearInterval(timer);
+  }, [user]);
 
   useEffect(() => {
     if (user) {

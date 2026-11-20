@@ -12,26 +12,11 @@ import {
   Search,
   UserCheck
 } from 'lucide-react';
+import { apiService } from '@/api/apiService';
 import { useAuth } from '@/hooks/useAuth';
-import type { PresensiItem, UnitKerjaType } from '@/types';
+import type { PengajuanCuti, PresensiItem, UnitKerjaType } from '@/types';
 
-export interface PengajuanCutiItem {
-  id: string | number;
-  nama: string;
-  nip: string;
-  unitKerja: string;
-  jabatan?: string;
-  jenis: 'CUTI' | 'IZIN' | 'SAKIT' | 'DINAS_LUAR';
-  mulai: string;
-  selesai: string;
-  alasan: string;
-  dokumenLampiran?: string;
-  status: 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK';
-  tanggalPengajuan: string;
-  disetujuiOleh?: string;
-  disetujuiPada?: string;
-  catatanPenolakan?: string;
-}
+export type PengajuanCutiItem = PengajuanCuti;
 
 const formatTanggalDisplay = (tanggal: string) => {
   try {
@@ -70,16 +55,25 @@ export const ApprovalCutiPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
-  // Sync dengan localStorage secara real-time
-  const loadData = () => {
+  // Sync dengan backend PostgreSQL (+ localStorage fallback)
+  const loadData = async () => {
+    const res = await apiService.getCuti();
+    if (res.success && Array.isArray(res.data)) {
+      setPengajuanList(res.data);
+      try {
+        localStorage.setItem('sim_pengajuan_cuti', JSON.stringify(res.data));
+      } catch {
+        // ignore
+      }
+      return;
+    }
     try {
       const saved = localStorage.getItem('sim_pengajuan_cuti');
       if (saved) {
-        const raw = JSON.parse(saved);
+        const raw: unknown = JSON.parse(saved);
         if (Array.isArray(raw)) {
-          const cleaned = raw.filter(
-            (r: { id?: string | number; alasan?: string }) =>
-              r.id !== 101 && !r.alasan?.includes('Keperluan Keluarga')
+          const cleaned = (raw as PengajuanCutiItem[]).filter(
+            (r) => String(r.id) !== '101' && !r.alasan?.includes('Keperluan Keluarga')
           );
           setPengajuanList(cleaned);
         }
@@ -90,10 +84,16 @@ export const ApprovalCutiPage = () => {
   };
 
   useEffect(() => {
-    const initTimer = window.setTimeout(loadData, 0);
-    const handleStorageChange = () => loadData();
+    const initTimer = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+    const handleStorageChange = () => {
+      void loadData();
+    };
     window.addEventListener('storage', handleStorageChange);
-    const interval = setInterval(loadData, 2500);
+    const interval = setInterval(() => {
+      void loadData();
+    }, 10000);
     return () => {
       window.clearTimeout(initTimer);
       window.removeEventListener('storage', handleStorageChange);
@@ -138,7 +138,7 @@ export const ApprovalCutiPage = () => {
     }
   };
 
-  const handleApprove = (id: string | number) => {
+  const handleApprove = async (id: string) => {
     const targetItem = pengajuanList.find((p) => String(p.id) === String(id));
     if (!targetItem) return;
 
@@ -147,18 +147,22 @@ export const ApprovalCutiPage = () => {
       timeStyle: 'short',
     });
 
-    const updated = pengajuanList.map((item) => {
-      if (String(item.id) === String(id)) {
-        return {
-          ...item,
-          status: 'DISETUJUI' as const,
-          disetujuiOleh: user?.nama || 'Pimpinan',
-          disetujuiPada: now,
-          catatanPenolakan: undefined,
-        };
-      }
-      return item;
-    });
+    const patchPayload: Partial<PengajuanCuti> = {
+      status: 'DISETUJUI',
+      disetujuiOleh: user?.nama || 'Pimpinan',
+      disetujuiPada: now,
+      catatanPenolakan: undefined,
+    };
+
+    const res = await apiService.updateCuti(String(id), patchPayload);
+    if (!res.success && !res.fallback) {
+      setFeedbackMessage(res.message || 'Gagal menyetujui pengajuan.');
+      return;
+    }
+
+    const updated = pengajuanList.map((item) =>
+      String(item.id) === String(id) ? { ...item, ...patchPayload } : item,
+    );
 
     saveToStorage(updated);
     syncToAttendanceHistory(targetItem);
@@ -167,7 +171,7 @@ export const ApprovalCutiPage = () => {
     setTimeout(() => setFeedbackMessage(null), 4000);
   };
 
-  const handleReject = (id: string | number) => {
+  const handleReject = async (id: string) => {
     const targetItem = pengajuanList.find((p) => String(p.id) === String(id));
     if (!targetItem) return;
 
@@ -183,18 +187,22 @@ export const ApprovalCutiPage = () => {
       timeStyle: 'short',
     });
 
-    const updated = pengajuanList.map((item) => {
-      if (String(item.id) === String(id)) {
-        return {
-          ...item,
-          status: 'DITOLAK' as const,
-          disetujuiOleh: user?.nama || 'Pimpinan',
-          disetujuiPada: now,
-          catatanPenolakan: alasanTolak.trim() || 'Ditolak oleh atasan.',
-        };
-      }
-      return item;
-    });
+    const patchPayload: Partial<PengajuanCuti> = {
+      status: 'DITOLAK',
+      disetujuiOleh: user?.nama || 'Pimpinan',
+      disetujuiPada: now,
+      catatanPenolakan: alasanTolak.trim() || 'Ditolak oleh atasan.',
+    };
+
+    const res = await apiService.updateCuti(String(id), patchPayload);
+    if (!res.success && !res.fallback) {
+      setFeedbackMessage(res.message || 'Gagal menolak pengajuan.');
+      return;
+    }
+
+    const updated = pengajuanList.map((item) =>
+      String(item.id) === String(id) ? { ...item, ...patchPayload } : item,
+    );
 
     saveToStorage(updated);
     setFeedbackMessage(`Pengajuan ${targetItem.jenis} atas nama ${targetItem.nama} telah DITOLAK.`);

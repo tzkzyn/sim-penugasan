@@ -29,11 +29,16 @@ interface PenugasanContextType {
   pegawaiList: Pegawai[];
   templates: TemplateSuratResmi[];
   isLoading: boolean;
+  isSyncing: boolean;
+  loadError: string | null;
+  isUsingCache: boolean;
+  lastUpdated: string | null;
   createTask: (newTaskData: Partial<AjuanSuratTugas>) => Promise<AjuanSuratTugas>;
   updateTaskStatus: (id: string, status: string) => Promise<void>;
   updateTask: (id: string, updatedData: Partial<AjuanSuratTugas>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   refreshTasks: () => Promise<void>;
+  refreshAll: () => Promise<void>;
   addPegawai: (newPegawaiData: Partial<Pegawai>) => Promise<PenugasanActionResult<Pegawai>>;
   updatePegawai: (id: string, updatedData: Partial<Pegawai>) => Promise<PenugasanActionResult<Pegawai>>;
   deletePegawai: (id: string) => Promise<PenugasanActionResult>;
@@ -48,6 +53,19 @@ interface PenugasanContextType {
 }
 
 const PenugasanContext = createContext<PenugasanContextType | undefined>(undefined);
+
+const extractApiErrorInfo = (err: unknown): { status?: number; message?: string } => {
+  if (!err || typeof err !== 'object') return {};
+  const rec = err as { response?: { status?: number; data?: { message?: unknown } } };
+  const status = rec.response?.status;
+  const rawMessage = rec.response?.data?.message;
+  const message = Array.isArray(rawMessage)
+    ? rawMessage.filter((m): m is string => typeof m === 'string').join(', ')
+    : typeof rawMessage === 'string'
+      ? rawMessage
+      : undefined;
+  return { status, message };
+};
 
 export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -79,6 +97,10 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return [];
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isUsingCache, setIsUsingCache] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const syncTemplates = useCallback((nextTemplates: TemplateSuratResmi[]) => {
     setTemplates(nextTemplates);
@@ -131,9 +153,16 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const res = await apiService.getTugas();
       if (res.success && Array.isArray(res.data)) {
         syncTasks(normalizeTaskList(res.data));
+        setLoadError(null);
+        setIsUsingCache(false);
+        setLastUpdated(new Date().toISOString());
+      } else {
+        setLoadError('Gagal memuat data terbaru dari server. Menampilkan data cache terakhir.');
+        setIsUsingCache(true);
       }
     } catch {
-      // fallback to current tasks
+      setLoadError('Server tidak dapat dihubungi. Menampilkan data cache terakhir.');
+      setIsUsingCache(true);
     }
   }, [syncTasks]);
 
@@ -142,9 +171,13 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const res = await apiService.getPegawai();
       if (res.success && Array.isArray(res.data)) {
         syncPegawai(res.data);
+      } else {
+        setLoadError('Gagal memuat data pegawai dari server. Menampilkan data cache/bawaan.');
+        setIsUsingCache(true);
       }
     } catch {
-      // fallback to local pegawai list
+      setLoadError('Server pegawai tidak dapat dihubungi. Menampilkan data cache/bawaan.');
+      setIsUsingCache(true);
     }
   }, [syncPegawai]);
 
@@ -181,6 +214,15 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // fallback to current templates
     }
   }, []);
+
+  const refreshAll = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      await Promise.all([refreshTasks(), refreshPegawai(), refreshTemplates()]);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [refreshTasks, refreshPegawai, refreshTemplates]);
 
   useEffect(() => {
     const syncAll = () => {
@@ -255,14 +297,23 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ],
     };
 
+    const previousTasks = tasks;
     const nextTasks = [newTask, ...tasks];
     syncTasks(nextTasks);
 
     // Sync to backend asynchronously
     try {
       await apiService.createTugas(newTask);
-    } catch {
-      // offline fallback
+      setLoadError(null);
+    } catch (err) {
+      const apiErr = extractApiErrorInfo(err);
+      if (apiErr.status && apiErr.status >= 400 && apiErr.status < 500) {
+        syncTasks(previousTasks);
+        setLoadError(apiErr.message || 'Pengajuan ditolak oleh server.');
+      } else {
+        setLoadError('Gagal menyinkronkan pengajuan ke server. Data tersimpan sementara di cache lokal.');
+        setIsUsingCache(true);
+      }
     }
 
     setIsLoading(false);
@@ -270,6 +321,7 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const updateTaskStatus = async (id: string, status: string): Promise<void> => {
+    const previousTasks = tasks;
     const nextTasks: AjuanSuratTugas[] = tasks.map((t) => {
       if (t.id === id) {
         return {
@@ -291,12 +343,21 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Sync to backend
     try {
       await apiService.updateStatusTugas(id, status);
-    } catch {
-      // offline fallback
+      setLoadError(null);
+    } catch (err) {
+      const apiErr = extractApiErrorInfo(err);
+      if (apiErr.status && apiErr.status >= 400 && apiErr.status < 500) {
+        syncTasks(previousTasks);
+        setLoadError(apiErr.message || 'Perubahan status ditolak oleh server.');
+      } else {
+        setLoadError('Gagal mengirim pembaruan status ke server. Perubahan tersimpan di cache lokal.');
+        setIsUsingCache(true);
+      }
     }
   };
 
   const updateTask = async (id: string, updatedData: Partial<AjuanSuratTugas>): Promise<void> => {
+    const previousTasks = tasks;
     const nextTasks: AjuanSuratTugas[] = tasks.map((t) => {
       if (t.id === id) {
         return {
@@ -311,19 +372,36 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     try {
       await apiService.updateTugas(id, updatedData);
-    } catch {
-      // offline fallback
+      setLoadError(null);
+    } catch (err) {
+      const apiErr = extractApiErrorInfo(err);
+      if (apiErr.status && apiErr.status >= 400 && apiErr.status < 500) {
+        syncTasks(previousTasks);
+        setLoadError(apiErr.message || 'Pembaruan data ditolak oleh server.');
+      } else {
+        setLoadError('Gagal menyimpan perubahan ke server. Perubahan tersimpan di cache lokal.');
+        setIsUsingCache(true);
+      }
     }
   };
 
   const deleteTask = async (id: string): Promise<void> => {
+    const previousTasks = tasks;
     const nextTasks = tasks.filter((t) => t.id !== id);
     syncTasks(nextTasks);
 
     try {
       await apiService.deleteTugas(id);
-    } catch {
-      // offline fallback
+      setLoadError(null);
+    } catch (err) {
+      const apiErr = extractApiErrorInfo(err);
+      if (apiErr.status && apiErr.status >= 400 && apiErr.status < 500) {
+        syncTasks(previousTasks);
+        setLoadError(apiErr.message || 'Penghapusan data ditolak oleh server.');
+      } else {
+        setLoadError('Gagal menghapus data di server. Perubahan tersimpan di cache lokal.');
+        setIsUsingCache(true);
+      }
     }
   };
 
@@ -606,11 +684,16 @@ export const PenugasanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         pegawaiList,
         templates,
         isLoading,
+        isSyncing,
+        loadError,
+        isUsingCache,
+        lastUpdated,
         createTask,
         updateTaskStatus,
         updateTask,
         deleteTask,
         refreshTasks,
+        refreshAll,
         addPegawai,
         updatePegawai,
         deletePegawai,

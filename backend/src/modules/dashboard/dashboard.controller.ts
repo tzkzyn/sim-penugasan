@@ -9,10 +9,10 @@ export class DashboardController {
   async getDashboard() {
     const tasks = await this.tugasService.findAll();
     const activeAssignments = tasks.filter(
-      (t: any) => t.status === 'SURAT_TERBIT'
+      (t) => t.status === 'SURAT_TERBIT'
     ).length;
     const draftApproval = tasks.filter(
-      (t: any) =>
+      (t) =>
         t.status === 'DRAFT' ||
         t.status === 'VERIFIKASI_SUBBAGIAN' ||
         t.status === 'PERSETUJUAN_PIMPINAN'

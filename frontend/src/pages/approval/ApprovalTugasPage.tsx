@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { usePenugasan } from '@/context/PenugasanContext';
 import type { AjuanSuratTugas, WorkflowStep } from '@/types';
 import {
@@ -7,40 +7,58 @@ import {
   formatJamRange,
   getKategoriLabel,
   getPegawaiDinasStats,
-  getRekapMingguanBulanan,
   resolveKategoriTemplate,
   type ScheduleConflict,
 } from '@/utils/penugasanHelpers';
 import {
   FileText, CheckCircle2, XCircle, Clock, Eye, Download,
   MapPin, Calendar as CalendarIcon, Users, X, Printer,
-  AlertTriangle, BarChart3,
+  AlertTriangle, Search,
 } from 'lucide-react';
 import { ApprovalConfirmModal } from '@/components/approval/ApprovalConfirmModal';
 import { CetakSuratTugasModal } from '@/components/ui/CetakSuratTugasModal';
 
 export const ApprovalTugasPage = () => {
-  const { tasks, pegawaiList, updateTask, updateTaskStatus } = usePenugasan();
-  const [activeTab, setActiveTab] = useState<'PENDING' | 'RIWAYAT'>('PENDING');
+  const { tasks, updateTask, updateTaskStatus } = usePenugasan();
+  const [activeTab, setActiveTab] = useState<'PENDING' | 'DRAFT' | 'RIWAYAT'>('PENDING');
   const [selectedUnit, setSelectedUnit] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
   const [rejectModalTask, setRejectModalTask] = useState<AjuanSuratTugas | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedSuratForA4, setSelectedSuratForA4] = useState<AjuanSuratTugas | null>(null);
   const [actionMsg, setActionMsg] = useState<string>('');
 
-  // Ambil data surat tugas yang membutuhkan persetujuan pimpinan
-  const myUnitData = tasks.filter(t => selectedUnit === 'ALL' || t.unitKerja === selectedUnit);
+  // Ambil data surat tugas berdasarkan unit kerja & kata kunci pencarian
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const myUnitData = tasks.filter((t) => {
+    if (selectedUnit !== 'ALL' && t.unitKerja !== selectedUnit) return false;
+    if (!normalizedQuery) return true;
+    const matchNomor = (t.nomorSurat || '').toLowerCase().includes(normalizedQuery);
+    const matchPerihal = (t.perihal || '').toLowerCase().includes(normalizedQuery);
+    const matchLokasi = (t.lokasiPenugasan || '').toLowerCase().includes(normalizedQuery);
+    const matchPegawai = t.pegawaiDitugaskan.some((p) =>
+      p.nama.toLowerCase().includes(normalizedQuery),
+    );
+    return matchNomor || matchPerihal || matchLokasi || matchPegawai;
+  });
 
   const pendingApprovals = myUnitData.filter(
-    t => t.status === 'VERIFIKASI_SUBBAGIAN' || t.status === 'PERSETUJUAN_PIMPINAN' || t.status === 'DRAFT'
+    (t) => t.status === 'VERIFIKASI_SUBBAGIAN' || t.status === 'PERSETUJUAN_PIMPINAN',
   );
+
+  const draftApprovals = myUnitData.filter((t) => t.status === 'DRAFT');
 
   const historyApprovals = myUnitData.filter(
-    t => t.status === 'SURAT_TERBIT' || t.status === 'DITOLAK'
+    (t) => t.status === 'SURAT_TERBIT' || t.status === 'DITOLAK',
   );
 
-  const displayData = activeTab === 'PENDING' ? pendingApprovals : historyApprovals;
+  const displayData =
+    activeTab === 'PENDING'
+      ? pendingApprovals
+      : activeTab === 'DRAFT'
+        ? draftApprovals
+        : historyApprovals;
 
   // Group data by Month and Year
   const groupedData = displayData.reduce((acc, curr) => {
@@ -61,11 +79,6 @@ export const ApprovalTugasPage = () => {
     const dateB = new Date(parseInt(yearB), months.indexOf(monthB), 1);
     return dateB.getTime() - dateA.getTime();
   });
-
-  const rekapStats = useMemo(
-    () => getRekapMingguanBulanan(tasks, pegawaiList),
-    [tasks, pegawaiList],
-  );
 
   const conflictPendingCount = pendingApprovals.filter(
     (t) => detectScheduleConflicts(t, tasks).length > 0,
@@ -121,123 +134,26 @@ export const ApprovalTugasPage = () => {
   return (
     <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-5">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1 pt-1">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
-            <FileText className="w-4 h-4" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Persetujuan Surat Tugas</h1>
-            <p className="text-xs text-slate-500">
-              Tinjau dan proses pengajuan surat tugas dari unit kerja Anda.
-            </p>
-          </div>
+      <div className="flex items-center gap-2.5 px-1 pt-1">
+        <div className="w-8 h-8 rounded-full bg-[#ECF2FF] text-[#5D87FF] flex items-center justify-center shrink-0">
+          <FileText className="w-4 h-4" />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={selectedUnit}
-            onChange={(e) => setSelectedUnit(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-[#F8FAFD] px-3 py-2 text-xs sm:text-sm text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-          >
-            <option value="ALL">Semua Unit Kerja</option>
-            <option value="RBI">RBI</option>
-            <option value="Fastingkom">Fastingkom</option>
-            <option value="Kepeg">Kepeg</option>
-            <option value="PM">PM</option>
-          </select>
-
-          <div className="flex bg-[#EEF3FB] p-1 rounded-full w-full md:w-fit">
-            <button
-              onClick={() => setActiveTab('PENDING')}
-              className={`flex-1 md:flex-none px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-full transition-all cursor-pointer ${
-                activeTab === 'PENDING' 
-                  ? 'bg-white text-[#1D4ED8] shadow-xs' 
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Menunggu Persetujuan
-              {pendingApprovals.length > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center bg-rose-100 text-rose-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  {pendingApprovals.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('RIWAYAT')}
-              className={`flex-1 md:flex-none px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-full transition-all cursor-pointer ${
-                activeTab === 'RIWAYAT' 
-                  ? 'bg-white text-[#1D4ED8] shadow-xs' 
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Riwayat
-            </button>
-          </div>
+        <div>
+          <h1 className="text-lg font-bold text-slate-900 tracking-tight">Persetujuan Surat Tugas</h1>
+          <p className="text-xs text-slate-500">
+            Tinjau dan proses pengajuan surat tugas dari unit kerja Anda.
+          </p>
         </div>
       </div>
 
-      {/* Rekap Mingguan & Bulanan + Indikator Bentrok */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-xs flex items-center gap-3">
-          <div className="rounded-lg bg-blue-50 p-2.5 text-blue-600">
-            <BarChart3 className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Rekap Minggu Ini ({rekapStats.weekLabel})
-            </p>
-            <p className="text-lg font-extrabold text-slate-800">
-              {rekapStats.suratMingguIni} Surat &bull; {rekapStats.totalPenugasanOrangMingguIni} Penugasan
-            </p>
-          </div>
+      {conflictPendingCount > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs font-semibold text-rose-800">
+          <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+          <span>
+            Terdapat {conflictPendingCount} pengajuan yang jadwalnya bentrok dengan penugasan lain. Mohon tinjau atau tolak pengajuan tersebut.
+          </span>
         </div>
-
-        <div className="rounded-xl border border-indigo-100 bg-white p-4 shadow-xs flex items-center gap-3">
-          <div className="rounded-lg bg-indigo-50 p-2.5 text-indigo-600">
-            <CalendarIcon className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Rekap Bulan Ini ({rekapStats.monthLabel})
-            </p>
-            <p className="text-lg font-extrabold text-slate-800">
-              {rekapStats.suratBulanIni} Surat &bull; {rekapStats.totalPenugasanOrangBulanIni} Penugasan
-            </p>
-          </div>
-        </div>
-
-        <div
-          className={`rounded-xl border p-4 shadow-xs flex items-center gap-3 ${
-            conflictPendingCount > 0
-              ? 'border-rose-200 bg-rose-50/70'
-              : 'border-emerald-200 bg-emerald-50/50'
-          }`}
-        >
-          <div
-            className={`rounded-lg p-2.5 ${
-              conflictPendingCount > 0
-                ? 'bg-rose-100 text-rose-600'
-                : 'bg-emerald-100 text-emerald-600'
-            }`}
-          >
-            <AlertTriangle className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-              Pendeteksi Bentrok Jadwal
-            </p>
-            <p
-              className={`text-sm font-extrabold ${
-                conflictPendingCount > 0 ? 'text-rose-800' : 'text-emerald-800'
-              }`}
-            >
-              {conflictPendingCount > 0
-                ? `${conflictPendingCount} Ajuan Bentrok (Harus Ditolak / Ganti Orang)`
-                : 'Tidak Ada Jadwal Bentrok'}
-            </p>
-          </div>
-        </div>
-      </div>
+      )}
 
       {actionMsg && (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
@@ -254,6 +170,75 @@ export const ApprovalTugasPage = () => {
 
       {/* Table Section */}
       <div className="bg-white rounded-2xl shadow-[0_6px_24px_-6px_rgba(30,64,175,0.08)] border border-slate-100 overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-100">
+          <div className="flex bg-[#EEF3FB] p-1 rounded-full w-full sm:w-fit shrink-0">
+            <button
+              onClick={() => setActiveTab('PENDING')}
+              className={`flex-1 sm:flex-none px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-full transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'PENDING'
+                  ? 'bg-white text-[#1D4ED8] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Menunggu ACC
+              {pendingApprovals.length > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center bg-rose-100 text-rose-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {pendingApprovals.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('DRAFT')}
+              className={`flex-1 sm:flex-none px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-full transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'DRAFT'
+                  ? 'bg-white text-[#1D4ED8] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Draft
+              {draftApprovals.length > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {draftApprovals.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('RIWAYAT')}
+              className={`flex-1 sm:flex-none px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-full transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'RIWAYAT'
+                  ? 'bg-white text-[#1D4ED8] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Riwayat
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari surat / pegawai..."
+                className="w-full rounded-xl border border-slate-200 bg-[#F8FAFD] pl-8 pr-3 py-2 text-xs sm:text-sm text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+
+            <select
+              value={selectedUnit}
+              onChange={(e) => setSelectedUnit(e.target.value)}
+              className="w-full sm:w-44 rounded-xl border border-slate-200 bg-[#F8FAFD] px-3 py-2 text-xs sm:text-sm text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="ALL">Semua Unit Kerja</option>
+              <option value="RBI">RBI</option>
+              <option value="Fastingkom">Fastingkom</option>
+              <option value="Kepeg">Kepeg</option>
+              <option value="PM">PM</option>
+            </select>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -501,9 +486,36 @@ export const ApprovalTugasPage = () => {
               ) : (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-slate-500 text-sm">
-                    {activeTab === 'PENDING' 
-                      ? 'Belum ada surat tugas yang menunggu persetujuan Anda.' 
-                      : 'Belum ada riwayat persetujuan.'}
+                    <div>
+                      {activeTab === 'PENDING'
+                        ? 'Belum ada surat tugas yang menunggu persetujuan Anda.'
+                        : activeTab === 'DRAFT'
+                          ? 'Tidak ada surat tugas berstatus draft.'
+                          : 'Belum ada riwayat persetujuan.'}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      {(searchQuery.trim() || selectedUnit !== 'ALL') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery('');
+                            setSelectedUnit('ALL');
+                          }}
+                          className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                        >
+                          Reset Filter
+                        </button>
+                      )}
+                      {activeTab !== 'RIWAYAT' && historyApprovals.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('RIWAYAT')}
+                          className="rounded-full bg-[#ECF2FF] px-3 py-1 text-xs font-semibold text-[#5D87FF] hover:bg-blue-100 transition-colors cursor-pointer"
+                        >
+                          Lihat Riwayat ({historyApprovals.length})
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}

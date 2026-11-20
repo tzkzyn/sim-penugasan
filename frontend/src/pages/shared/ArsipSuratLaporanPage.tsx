@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePenugasan } from '@/context/PenugasanContext';
 import { UNIT_COLORS } from '@/data/dummyData';
-import type { AjuanSuratTugas, Pegawai, UnitKerjaType } from '@/types';
+import type { AjuanSuratTugas, Pegawai } from '@/types';
 import { downloadFileUrl } from '@/utils/penugasanHelpers';
 import { DashboardAjuanDetailModal } from '@/components/ui/DashboardAjuanDetailModal';
 import { CetakSuratTugasModal } from '@/components/ui/CetakSuratTugasModal';
@@ -63,23 +64,39 @@ interface PegawaiFolder {
 
 export const ArsipSuratLaporanPage = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const isUserRole = user?.role === 'USER';
-  const { tasks: allTasks, myTasks } = usePenugasan();
+  const { tasks: allTasks, myTasks, pegawaiList } = usePenugasan();
   const tasks = isUserRole ? myTasks : allTasks;
 
-  const [viewMode, setViewMode] = useState<'FOLDER' | 'SEMUA'>('FOLDER');
+  const initialTabParam = searchParams.get('tab');
+  const [viewMode, setViewMode] = useState<'FOLDER' | 'SEMUA'>(
+    initialTabParam === 'belum-laporan' ? 'SEMUA' : 'FOLDER',
+  );
   const [selectedPegawaiKey, setSelectedPegawaiKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ArsipTab>('SURAT_TERBIT');
-  const [selectedUnit, setSelectedUnit] = useState<'ALL' | UnitKerjaType>('ALL');
+  const [activeTab, setActiveTab] = useState<ArsipTab>(
+    initialTabParam === 'belum-laporan' ? 'BELUM_LAPORAN' : 'SURAT_TERBIT',
+  );
+  const [selectedUnit, setSelectedUnit] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAjuan, setSelectedAjuan] = useState<AjuanSuratTugas | null>(null);
   const [suratToPrint, setSuratToPrint] = useState<AjuanSuratTugas | null>(null);
   const [previewLaporan, setPreviewLaporan] = useState<AjuanSuratTugas | null>(null);
 
+  const unitOptions = useMemo(() => {
+    const units = new Set<string>(['RBI', 'Fastingkom', 'Kepeg', 'PM']);
+    pegawaiList.forEach((p) => {
+      if (p.unitKerja?.trim()) units.add(p.unitKerja.trim());
+    });
+    tasks.forEach((t) => {
+      if (t.unitKerja?.trim()) units.add(t.unitKerja.trim());
+    });
+    return Array.from(units).sort((a, b) => a.localeCompare(b, 'id'));
+  }, [pegawaiList, tasks]);
+
   const pegawaiFolders = useMemo<PegawaiFolder[]>(() => {
     const map = new Map<string, PegawaiFolder>();
     tasks.forEach((t) => {
-      if (selectedUnit !== 'ALL' && t.unitKerja !== selectedUnit) return;
       const involved = t.pegawaiDitugaskan.length > 0 ? t.pegawaiDitugaskan : [t.pengaju];
       const seenInTask = new Set<string>();
       involved.forEach((p) => {
@@ -106,9 +123,17 @@ export const ArsipSuratLaporanPage = () => {
       });
     });
 
-    const list = Array.from(map.values()).sort((a, b) =>
+    let list = Array.from(map.values()).sort((a, b) =>
       a.pegawai.nama.localeCompare(b.pegawai.nama, 'id'),
     );
+
+    if (selectedUnit !== 'ALL') {
+      list = list.filter((f) =>
+        f.pegawai.unitKerja
+          ? f.pegawai.unitKerja === selectedUnit
+          : f.tasks.some((t) => t.unitKerja === selectedUnit),
+      );
+    }
 
     if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
@@ -137,8 +162,11 @@ export const ArsipSuratLaporanPage = () => {
     if (!isUserRole && viewMode === 'FOLDER' && activeFolder) {
       return activeFolder.tasks;
     }
+    if (selectedUnit !== 'ALL') {
+      return tasks.filter((t) => t.unitKerja === selectedUnit);
+    }
     return tasks;
-  }, [isUserRole, viewMode, activeFolder, tasks]);
+  }, [isUserRole, viewMode, activeFolder, tasks, selectedUnit]);
 
   const stats = useMemo(() => {
     const total = scopedTasks.length;
@@ -193,36 +221,6 @@ export const ArsipSuratLaporanPage = () => {
           </div>
           <h1 className="text-lg font-bold text-slate-900 tracking-tight">Arsip Surat &amp; Laporan Penugasan</h1>
         </div>
-
-        {!isUserRole && (
-          <div className="inline-flex items-center gap-1 rounded-xl bg-slate-100/80 p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode('FOLDER')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                viewMode === 'FOLDER'
-                  ? 'bg-white text-[#5D87FF] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Folder Pegawai
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('SEMUA');
-                setSelectedPegawaiKey(null);
-              }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                viewMode === 'SEMUA'
-                  ? 'bg-white text-[#5D87FF] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Semua Data
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Ringkasan */}
@@ -350,17 +348,53 @@ export const ArsipSuratLaporanPage = () => {
               />
             </div>
 
-            <select
-              value={selectedUnit}
-              onChange={(e) => setSelectedUnit(e.target.value as 'ALL' | UnitKerjaType)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-[#5D87FF]"
-            >
-              <option value="ALL">Semua Unit</option>
-              <option value="RBI">RBI</option>
-              <option value="Fastingkom">Fastingkom</option>
-              <option value="Kepeg">Kepeg</option>
-              <option value="PM">PM</option>
-            </select>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedUnit}
+                onChange={(e) => {
+                  setSelectedUnit(e.target.value);
+                  setSelectedPegawaiKey(null);
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-[#5D87FF]"
+              >
+                <option value="ALL">Semua Unit</option>
+                {unitOptions.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </select>
+
+              {!isUserRole && (
+                <div className="inline-flex items-center gap-1 rounded-xl bg-slate-100/80 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('FOLDER')}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                      viewMode === 'FOLDER'
+                        ? 'bg-white text-[#5D87FF] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Folder Pegawai
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode('SEMUA');
+                      setSelectedPegawaiKey(null);
+                    }}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                      viewMode === 'SEMUA'
+                        ? 'bg-white text-[#5D87FF] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Semua Data
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

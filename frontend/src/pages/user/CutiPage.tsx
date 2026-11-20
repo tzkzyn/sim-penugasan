@@ -11,27 +11,11 @@ import {
   XCircle,
   UserCheck
 } from 'lucide-react';
+import { apiService } from '@/api/apiService';
 import { useAuth } from '@/hooks/useAuth';
+import type { JenisPengajuanCuti, PengajuanCuti } from '@/types';
 
-type JenisPengajuan = 'CUTI' | 'IZIN' | 'SAKIT' | 'DINAS_LUAR';
-
-interface PengajuanCuti {
-  id: string | number;
-  nama: string;
-  nip: string;
-  unitKerja: string;
-  jabatan?: string;
-  jenis: JenisPengajuan;
-  mulai: string;
-  selesai: string;
-  alasan: string;
-  dokumenLampiran?: string;
-  status: 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK';
-  tanggalPengajuan: string;
-  disetujuiOleh?: string;
-  disetujuiPada?: string;
-  catatanPenolakan?: string;
-}
+type JenisPengajuan = JenisPengajuanCuti;
 
 const formatTanggal = (tanggal: string) => {
   try {
@@ -60,7 +44,7 @@ const readStoredCuti = (): PengajuanCuti[] => {
       const parsed: unknown = JSON.parse(saved);
       if (Array.isArray(parsed)) {
         return (parsed as PengajuanCuti[]).filter(
-          (p) => p && p.id !== 101 && !p.alasan?.includes('Keperluan Keluarga')
+          (p) => p && String(p.id) !== '101' && !p.alasan?.includes('Keperluan Keluarga')
         );
       }
     }
@@ -83,16 +67,32 @@ export const CutiPage = () => {
   const [errorPesan, setErrorPesan] = useState('');
   const hariIni = tanggalHariIni();
 
-  // Real-time synchronization dengan data pengajuan
-  const syncFromStorage = () => {
+  // Real-time synchronization dengan backend PostgreSQL (+ localStorage fallback)
+  const syncFromServer = async () => {
+    const res = await apiService.getCuti();
+    if (res.success && Array.isArray(res.data)) {
+      setPengajuan(res.data);
+      try {
+        localStorage.setItem('sim_pengajuan_cuti', JSON.stringify(res.data));
+      } catch {
+        // ignore
+      }
+      return;
+    }
     setPengajuan(readStoredCuti());
   };
 
   useEffect(() => {
-    const initialTimer = window.setTimeout(syncFromStorage, 0);
-    const handleStorage = () => syncFromStorage();
+    const initialTimer = window.setTimeout(() => {
+      void syncFromServer();
+    }, 0);
+    const handleStorage = () => {
+      setPengajuan(readStoredCuti());
+    };
     window.addEventListener('storage', handleStorage);
-    const interval = setInterval(syncFromStorage, 2500);
+    const interval = setInterval(() => {
+      void syncFromServer();
+    }, 10000);
     return () => {
       window.clearTimeout(initialTimer);
       window.removeEventListener('storage', handleStorage);
@@ -117,7 +117,7 @@ export const CutiPage = () => {
     }
   };
 
-  const kirimPengajuan = (event: React.FormEvent<HTMLFormElement>) => {
+  const kirimPengajuan = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPesan('');
     setErrorPesan('');
@@ -156,7 +156,14 @@ export const CutiPage = () => {
       tanggalPengajuan: tglSekarang,
     };
 
-    const updated = [itemBaru, ...pengajuan];
+    const res = await apiService.createCuti(itemBaru);
+    if (!res.success && !res.fallback) {
+      setErrorPesan(res.message || 'Gagal mengirim permohonan ke server.');
+      return;
+    }
+
+    const savedItem = res.success && res.data ? res.data : itemBaru;
+    const updated = [savedItem, ...pengajuan];
     setPengajuan(updated);
 
     try {

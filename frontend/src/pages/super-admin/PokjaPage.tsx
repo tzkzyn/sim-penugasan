@@ -1,11 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, X } from 'lucide-react';
+import { apiService } from '@/api/apiService';
+import type { PokjaItem } from '@/types';
 
-type Pokja = {
-  id: number;
-  kode: string;
-  nama: string;
-};
+type Pokja = PokjaItem;
 
 export const PokjaPage = () => {
   const [pokjas, setPokjas] = useState<Pokja[]>(() => {
@@ -16,6 +14,20 @@ export const PokjaPage = () => {
       return [];
     }
   });
+
+  useEffect(() => {
+    let active = true;
+    const fetchPokja = async () => {
+      const res = await apiService.getPokja();
+      if (active && res.success && Array.isArray(res.data)) {
+        setPokjas(res.data);
+      }
+    };
+    void fetchPokja();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -54,7 +66,7 @@ export const PokjaPage = () => {
     setIsFormOpen(true);
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const kode = form.kode.trim().toUpperCase();
     const nama = form.nama.trim();
@@ -67,15 +79,33 @@ export const PokjaPage = () => {
     }
 
     if (editingPokja) {
-      setPokjas((items) => items.map((pokja) => pokja.id === editingPokja.id ? { ...pokja, kode, nama } : pokja));
+      const res = await apiService.updatePokja(String(editingPokja.id), { kode, nama });
+      if (!res.success && !res.fallback) {
+        window.alert(res.message || 'Gagal memperbarui POKJA.');
+        return;
+      }
+      const nextItem = res.success && res.data ? res.data : { ...editingPokja, kode, nama };
+      setPokjas((items) => items.map((pokja) => (pokja.id === editingPokja.id ? nextItem : pokja)));
     } else {
-      setPokjas((items) => [...items, { id: Date.now(), kode, nama }]);
+      const id = `pokja-${Date.now()}`;
+      const res = await apiService.createPokja({ id, kode, nama });
+      if (!res.success && !res.fallback) {
+        window.alert(res.message || 'Gagal menambahkan POKJA.');
+        return;
+      }
+      const nextItem = res.success && res.data ? res.data : { id, kode, nama };
+      setPokjas((items) => [...items, nextItem]);
     }
     closeForm();
   };
 
-  const handleDelete = (pokja: Pokja) => {
+  const handleDelete = async (pokja: Pokja) => {
     if (!window.confirm(`Hapus ${pokja.kode} — ${pokja.nama}?`)) return;
+    const res = await apiService.deletePokja(String(pokja.id));
+    if (!res.success && !res.fallback) {
+      window.alert(res.message || 'Gagal menghapus POKJA.');
+      return;
+    }
     setPokjas((items) => items.filter((item) => item.id !== pokja.id));
   };
 
